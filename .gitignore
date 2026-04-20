@@ -1,20 +1,96 @@
-# Python caches
+# Python caches and bytecode
 __pycache__/
 *.py[cod]
+*.pyd
+*.so
 *$py.class
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.pyre/
+.coverage*
+coverage.xml
+htmlcov/
 
-# Local virtual environments
+# Virtual environments
 .venv/
+venv/
+env/
+ENV/
 
-# Local runtime artifacts
-.offload_cache/
-.agents/
-clara_context.db
-clara_context.db-shm
-clara_context.db-wal
-*.log
+# Build and packaging outputs
+build/
+dist/
+site/
+*.egg-info/
+pip-wheel-metadata/
+target/
+
+# Frontend and JavaScript artifacts
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.next/
+coverage/
+*.tsbuildinfo
 
 # Notebook checkpoints
 .ipynb_checkpoints/
+
+# Local runtime artifacts
+.offload_cache/
+.agent/
+.agents/
+logs/
+*.log
+*.pid
+*.pid.lock
+*.seed
+*.out
+*.err
+clara_context.db
+clara_context.db-shm
+clara_context.db-wal
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# Local model and checkpoint outputs
+models/
+experts/
+experts_test/
+expert_checkpoints/*.npz
+expert_checkpoints/*.npy
+expert_checkpoints/*.bin
+expert_checkpoints/*.pt
+expert_checkpoints/*.safetensors
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Native build outputs
+lambda-azure-engine/rust-kernel/target/
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.exe
+*.pdb
+*.idb
+*.ilk
+*.exp
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode-test/
+.idea/
+*.swp
+*.swo
+*~
