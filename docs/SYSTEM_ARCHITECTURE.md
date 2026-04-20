@@ -1,28 +1,49 @@
 # System Architecture
 
-The Asmodeus architecture is comprised of six modular layers, each responsible for specialized parts of the swarm-native intelligence system. Here’s how the system is structured:
+This document maps runtime layers to concrete repository modules.
 
-## Layers with Pseudocode
+The authoritative math and invariants are in:
 
-1. **Scout Layer**:
-   - Agents tasked with discovering objectives and uncertainties.
-   ```python
-   class ScoutAgent:
-       def discover_tasks(self):
-           # Analyze environment -> generate subtask list
-           return list_of_tasks
-   ```
+- docs/MASTER_SCIENTIFIC_SPECIFICATION.md
 
-2. **Worker Layer**:
-   - Specialized agents tasked with resolving subtasks assigned by the Coordinator.
-   ```python
-   class WorkerAgent:
-       def execute_task(self, task):
-           try:
-               result = task.run()
-               task.verify(result)
-           except Exception as e:
-               task.log_failure(e)
-           return result
-   ```
-   - Core function includes retries for transient failure cases.
+## Layered View
+
+1. Query and task decomposition
+- Modules: asmodeus/scout.py, asmodeus/task.py
+- Role: infer objectives, derive required skills, produce executable task units.
+
+2. Assignment and execution control
+- Modules: asmodeus/task_manager.py, asmodeus/worker.py
+- Role: worker assignment, retries, transient-failure recovery.
+
+3. Specialist registry and readiness
+- Modules: asmodeus/registry.py, asmodeus/downloader.py
+- Role: register specialists, enforce admission gates, track ready set.
+
+4. Sparse routing and topology orchestration
+- Modules: asmodeus/router.py, asmodeus/cluster_topology.py, asmodeus/runtime.py
+- Role: top-k specialist selection, cluster-level coordination, runtime policy enforcement.
+
+5. State fusion and world consistency
+- Modules: asmodeus/swarm_convolution.py, asmodeus/world_model.py
+- Role: aggregate active specialist states, maintain shared state with confidence and contradiction handling.
+
+6. Inference and hardware bridge
+- Modules: asmodeus/true_inference.py, asmodeus/hybrid_adapter.py
+- Role: model-tier generation backend and optional hardware integration path.
+
+7. User interfaces
+- Modules: cli.py, talk_to_asmodeous.cmd
+- Role: operator-facing control and startup workflows.
+
+## Deterministic Data Flow
+
+$$
+q_t \rightarrow \text{skill extraction} \rightarrow \text{router ranking} \rightarrow S_t \rightarrow \text{specialist execution} \rightarrow z_t \rightarrow y_t
+$$
+
+with hard constraint:
+
+$$
+S_t \subseteq M_{ready}(t)
+$$

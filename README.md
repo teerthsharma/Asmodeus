@@ -1,330 +1,155 @@
 # Asmodeus
 
-A scientifically grounded framework for swarm-native agent orchestration, with a central hypothesis that a sparse, coordinated topology of small specialist models can approximate the capability profile of a much larger monolithic model.
-
-## Abstract
-
-Asmodeus studies multi-agent intelligence as a dynamic graph system in which specialist agents communicate, route work adaptively, and aggregate evidence through structured pooling. The primary design is model-centric: many narrowly specialized micro-masters in the 1M to 10M parameter range are composed into a topological swarm. This separates static capacity from active compute and creates a falsifiable research program around quality, latency, cost, and robustness.
-
-All production architecture paths are constrained to a hybrid runtime doctrine:
-
-1. Lambda Azure style sparse expert activation, streaming, and memory-aware execution.
-2. Epsilon-Hollow style orchestrator control loops, tiered decision routing, and resilient bootstrap/recovery.
-3. Internet-downloaded SLM acquisition as the default model supply mechanism.
-
-The repository currently contains a minimal executable core for scout-driven task discovery, worker execution with retry-based recovery, and task-manager orchestration. Formal topology and benchmarking plans are documented for iterative expansion.
+Asmodeus is a specialist-swarm orchestration runtime focused on scientific rigor, measurable outcomes, and bounded active compute.
 
 ## Scientific Objective
 
-Determine whether sparse coordination among many small specialists can achieve near-dense quality while reducing active compute.
+The project investigates whether a large pool of small specialists can approach dense-model behavior while activating only a budgeted subset per query.
 
-Primary hypothesis:
-
-$$
-Q_{virtual}(\{P_i \in [1M,10M]\}) \approx Q_{dense}(P_{ref})
-$$
-
-where $P_{ref}$ is a dense large-model reference (for example 10B class), under bounded coordination overhead and controlled world-model drift.
-
-## Mandatory Runtime Doctrine (Non-Negotiable)
-
-### 1) Lambda Azure Execution Logic
-
-1. Sparse active-set inference instead of dense full-set activation.
-2. Streaming model materialization and quantization-aware execution.
-3. Demand-paged model residency and memory-budgeted scheduling.
-4. Cost-aware routing over available specialists.
-
-### 2) Epsilon-Hollow Orchestration Logic
-
-1. Orchestrator-centered control flow for agent, IDE, or full workflows.
-2. Tiered control roles for planning, logic-gating, and architectural arbitration.
-3. Bootstrap-first operations (dependency setup, model prep, health checks).
-4. Retry/fallback semantics for transient failures and degraded-mode continuity.
-
-### 3) Internet SLM Supply Logic
-
-All specialist models are treated as internet-sourced SLM assets unless explicitly pinned as internal artifacts.
-
-Readiness set:
+Working objective:
 
 $$
-\mathcal{M}_{ready}(t)=\{m \in \mathcal{M}_{internet}\mid D_m(t) \land V_m \land C_m\}
+Q_{virtual} \approx Q_{dense}(P_{ref}) \quad \text{with} \quad P_{active}(t) \ll P_{total}
 $$
 
 where:
 
-- $D_m(t)$: download complete and local cache materialized
-- $V_m$: verification passed (checksum/provenance/license policy)
-- $C_m$: runtime compatibility passed (format/device/quantization constraints)
+- $P_{total}$ is total registered specialist capacity.
+- $P_{active}(t)$ is active capacity at runtime step $t$.
 
-Routing is constrained to verified-ready specialists only.
+## Runtime Invariants
 
-## Research Questions
-
-1. Capacity composition: Can distributed specialist capacity compose into strong global reasoning?
-2. Routing economics: What top-k policy minimizes cost for a target quality threshold?
-3. Coordination efficiency: How much communication is necessary before returns diminish?
-4. Reliability: Can retry, reroute, and verification loops keep failure rates bounded under perturbation?
-
-## Formal System Definition
-
-Let:
-
-- $E = \{e_1, \dots, e_N\}$ be specialists, with per-specialist parameters $P_i$.
-- $h_i^t \in \mathbb{R}^d$ be specialist state at time $t$.
-- $w_t \in \mathbb{R}^m$ be global world state.
-- $A_t \in \mathbb{R}^{N \times N}$ be weighted swarm adjacency.
-- $E_t \subseteq \mathcal{M}_{ready}(t)$ be specialists currently verified and routable.
-
-Static parameter budget:
+1. Budgeted sparse routing
 
 $$
-P_{total} = \sum_{i=1}^{N} P_i
+P_{active}(t) = \sum_{i \in S_t} P_i \le P_{budget}
 $$
 
-Micro-master topology bands:
+2. Admission-gated activation
 
 $$
-P_i \in \{1M, 10M\}
+S_t \subseteq M_{ready}(t)
 $$
 
-This makes topology design a model-allocation problem over specialist nodes, not a data-sharding problem.
+3. Verified model supply chain
+- Downloaded specialist artifacts must pass integrity and compatibility checks before routing.
 
-Sparse activation budget:
+## Canonical Documentation
 
-$$
-P_{active}(t) = \sum_{i \in S_t} P_i, \quad |S_t| = k_t \ll N
-$$
+Use this as the primary source:
 
-### Local Message Passing
+- docs/MASTER_SCIENTIFIC_SPECIFICATION.md
 
-$$
-m_i^t = \sum_{j \in \mathcal{N}(i)} A_{ij}^t W_m h_j^t
-$$
+Supporting documents:
 
-### State Update
+- docs/OVERVIEW.md
+- docs/SYSTEM_ARCHITECTURE.md
+- docs/GOALS.md
+- docs/TOPOLOGY_100M_TO_10B.md
+- docs/RUNTIME_INTEGRATION_DOCTRINE.md
+- docs/EVALUATION_PLAN.md
+- docs/IMPLEMENTATION_PLAN.md
+- docs/TASKS.md
 
-$$
-h_i^{t+1} = \sigma(W_s h_i^t + m_i^t + B w_t)
-$$
+## Repository Map
 
-### Swarm Convolution and Pooling
+Core orchestration:
 
-$$
-c_\ell^t = \sum_{i=1}^{N} K_\ell(i) h_i^t, \quad
-z_t = \mathrm{concat}(c_1^t, \dots, c_L^t)
-$$
+- asmodeus/scout.py
+- asmodeus/task.py
+- asmodeus/worker.py
+- asmodeus/task_manager.py
 
-### Routing Rule
+Routing and registry:
 
-$$
-r_i^t = g(h_i^t, x_t, w_t), \quad S_t = \mathrm{topk}(r^t, k_t), \; S_t \subseteq E_t
-$$
+- asmodeus/registry.py
+- asmodeus/router.py
+- asmodeus/runtime.py
 
-### Multi-objective Optimization
+Acquisition and verification:
 
-$$
-J = \lambda_q Q - \lambda_c C - \lambda_l L + \lambda_r R
-$$
+- asmodeus/downloader.py
 
-where $Q$ is quality, $C$ is compute cost, $L$ is latency, and $R$ is robustness.
+Topology and fusion:
 
-## Computational Complexity (Conceptual)
+- asmodeus/cluster_topology.py
+- asmodeus/world_model.py
+- asmodeus/swarm_convolution.py
 
-Let $d$ be latent width, $|E_t|$ active communication edges at time $t$, and $k_t$ active specialists.
+Inference and runtime bridge:
 
-Dense monolith-like compute scales with total parameters:
+- asmodeus/true_inference.py
+- asmodeus/hybrid_adapter.py
 
-$$
-\mathcal{O}(P_{total})
-$$
+User interfaces:
 
-Sparse swarm step cost scales approximately as:
+- cli.py
+- talk_to_asmodeous.cmd
 
-$$
-\mathcal{O}(\sum_{i \in S_t} P_i + |E_t| d^2)
-$$
+## Setup
 
-This decomposition clarifies the design goal: maximize quality gain per marginal increase in $k_t$ and communication edges.
+Python:
 
-## Assumptions and Threats to Validity
+- Python 3.10+
 
-1. Specialist separability: assumes tasks can be decomposed into reusable capability slices.
-2. Router generalization: assumes routing policy remains calibrated under distribution shift.
-3. World-model coherence: assumes stale or conflicting state can be bounded by TTL and arbitration.
-4. Benchmark representativeness: assumes benchmark mix captures real deployment workloads.
+Install dependencies:
 
-All four assumptions are explicitly tested through ablations and stress scenarios.
-
-## Topology Thesis: 1M/10M Micro-Masters -> Elastic Virtual Macro-Model
-
-The topology claim is separated into three testable components:
-
-1. Coverage: specialists jointly span the task manifold.
-2. Coordination: graph communication preserves global coherence.
-3. Arbitration: verifier/coordinator loops resolve local conflicts.
-
-Detailed equations and build targets: [docs/TOPOLOGY_100M_TO_10B.md](docs/TOPOLOGY_100M_TO_10B.md).
-Hybrid runtime policy and supply-chain rules: [docs/RUNTIME_INTEGRATION_DOCTRINE.md](docs/RUNTIME_INTEGRATION_DOCTRINE.md).
-
-## Experimental Methodology
-
-### Benchmarks
-
-Evaluate on mixed workloads:
-
-1. Deterministic orchestration tasks.
-2. Multi-step coding and reasoning workflows.
-3. Adversarial or noisy routing conditions.
-
-### Baselines
-
-1. Single-specialist baselines (1M and 10M classes).
-2. Non-convolution multi-agent ablation.
-3. Dense large-model reference (10B class or closest practical proxy).
-
-### Core Metrics
-
-1. Quality: success rate, correctness, completeness.
-2. Efficiency: cost per successful task.
-3. Latency: p50/p95 orchestration latency.
-4. Coordination health: hop count, conflict rate, utilization entropy.
-5. Reliability: recovery rate after first-pass failure.
-
-### Statistical Rigor
-
-1. Report mean and confidence intervals over repeated runs.
-2. Use paired comparisons where tasks are identical across systems.
-3. Separate exploratory findings from confirmatory results.
-4. Publish ablations for routing, world-model consistency, and convolution depth.
-
-## Falsifiability Criteria
-
-The core thesis is considered unsupported if any of the following hold after controlled evaluation:
-
-1. Quality parity remains materially below target despite tuning.
-2. Coordination overhead dominates latency budget.
-3. Specialist collapse persists (routing concentrates in few experts).
-4. Gains disappear outside synthetic benchmarks.
-
-## Current Implementation Status
-
-Implemented core (minimal executable scaffold):
-
-1. Scout task discovery and simple routing: [asmodeus/scout.py](asmodeus/scout.py)
-2. Worker execution with bounded retry recovery: [asmodeus/worker.py](asmodeus/worker.py)
-3. Task abstraction with transient-failure simulation: [asmodeus/task.py](asmodeus/task.py)
-4. Assignment and orchestration manager: [asmodeus/task_manager.py](asmodeus/task_manager.py)
-5. Unit tests for end-to-end execution and failure handling: [tests/test_core.py](tests/test_core.py)
-6. Skill-aware routing and hierarchical subagent execution for specialized tasks
-
-## Skill-Based Subagents (How To Assign and Complete Tasks)
-
-Asmodeus now supports explicit task skills and parent-child worker hierarchies.
-
-```python
-from asmodeus.scout import ScoutAgent
-from asmodeus.task import Task
-from asmodeus.task_manager import TaskManager
-from asmodeus.worker import WorkerAgent
-
-scout = ScoutAgent(name="Scout-Alpha")
-manager = TaskManager()
-
-# 1) Register a parent worker
-worker = WorkerAgent(name="Worker-Node-1", skills=["general"])
-manager.register_worker(worker)
-
-# 2) Create a specialized subagent under that worker
-manager.create_subagent(
-	parent_worker_name="Worker-Node-1",
-	subagent_name="Worker-Node-1-Network",
-	skills=["networking", "recon"],
-)
-
-# 3) Define a task that requires a skill
-task = Task(name="Network Recon", required_skills=["networking"])
-
-# 4) Route and execute
-assigned = scout.route_task_to_agents(task, manager.get_available_workers())
-results = manager.execute_all({task: assigned})
-
-print(results["Network Recon"])  # True
+```powershell
+python -m pip install -e .
 ```
 
-Behavior summary:
+If editable install is not desired:
 
-1. Tasks may declare `required_skills`.
-2. Workers and subagents may declare `skills`.
-3. The scout routes skill-required tasks to matching agents.
-4. The manager executes assigned agents in order, allowing fallback attempts.
+```powershell
+python -m pip install numpy torch transformers scipy tqdm fastapi uvicorn websockets accelerate
+```
 
-Planned scientific docs:
-
-1. Goals and measurable targets: [docs/GOALS.md](docs/GOALS.md)
-2. Topology spec: [docs/TOPOLOGY_100M_TO_10B.md](docs/TOPOLOGY_100M_TO_10B.md)
-3. Runtime integration doctrine: [docs/RUNTIME_INTEGRATION_DOCTRINE.md](docs/RUNTIME_INTEGRATION_DOCTRINE.md)
-4. Additional architecture/theory planning artifacts in [docs](docs)
-
-## Reproducibility Quickstart
-
-### Run tests
+## Run Tests
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-Expected current result:
+## Run CLI
 
-```
-Ran 3 tests in ~0.001s
-OK
-```
+Direct:
 
-## Repository Map
-
-```
-Asmodeus/
-	asmodeus/
-		scout.py
-		worker.py
-		task.py
-		task_manager.py
-	tests/
-		test_core.py
-	docs/
-		GOALS.md
-		TOPOLOGY_100M_TO_10B.md
-		OVERVIEW.md
-		THEORY.md
-		SYSTEM_ARCHITECTURE.md
-		EVALUATION_PLAN.md
-		IMPLEMENTATION_PLAN.md
-		TASKS.md
-	README.md
+```powershell
+python cli.py --response-mode llm --persona scientist --expert-dir .\expert_checkpoints
 ```
 
-## Roadmap Alignment
+Windows launcher:
 
-Milestones and measurable targets are tracked in [docs/GOALS.md](docs/GOALS.md). The immediate focus is:
+```powershell
+.\talk_to_asmodeous.cmd
+```
 
-1. Formalize heterogeneous 1M/10M specialist topology and capability registry.
-2. Implement Lambda Azure + Epsilon-Hollow hybrid runtime adapters.
-3. Implement internet SLM registry, downloader, and verifier.
-4. Sparse top-k routing with model-cost-aware gating and utilization telemetry.
-5. Swarm-convolution integration and ablation validation.
-6. Baseline comparison against OpenClaw-like pipelines.
+## Runtime Notes
 
-## Safety and Governance Notes
+1. GPU is recommended for larger inference tiers.
+2. The launcher installs missing non-torch dependencies automatically.
+3. Torch is not auto-reinstalled by launcher logic to prevent accidental CUDA wheel replacement.
+4. Optional WSL fallback model fetch path can be enabled with:
 
-Asmodeus is a research system. Any deployment-facing use should include:
+```powershell
+$env:ASMODEUS_ENABLE_OPENCLAW_WSL="1"
+```
 
-1. Policy-constrained action boundaries.
-2. Audit logging for routing and arbitration decisions.
-3. Rollback-safe execution paths for irreversible actions.
-4. Human override for high-impact operations.
+## Current Maturity
+
+Validated:
+
+1. Core scout-manager-worker orchestration.
+2. Skill-based routing and recovery behavior.
+3. Registry readiness accounting and sparse routing.
+4. Download and verification fallback behavior.
+
+In progress:
+
+1. Benchmark parity studies versus dense references.
+2. Cost-latency-quality tradeoff characterization.
+3. Extended reproducibility and ablation reporting.
 
 ## Citation
 
-If you use this project in reports or experiments, cite the repository and include commit hashes for exact reproducibility.
+When reporting results, cite repository URL and exact commit hash used in experiments.

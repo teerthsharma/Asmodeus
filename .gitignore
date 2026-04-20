@@ -1,0 +1,20 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+
+# Local virtual environments
+.venv/
+
+# Local runtime artifacts
+.offload_cache/
+.agents/
+clara_context.db
+clara_context.db-shm
+clara_context.db-wal
+*.log
+
+# Notebook checkpoints
+.ipynb_checkpoints/
