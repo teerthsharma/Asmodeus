@@ -1,7 +1,7 @@
 import logging
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
-from asmodeus.registry import Registry, MicroMaster
+from asmodeus.registry import Registry, MicroMaster, ModelStatus
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +9,7 @@ class SparseTopKRouter:
     """
     Implements S_t = topk(r^t, k) routing rule for the micro-master swarm.
     Incorporates model-cost-aware gating, reliability, and utilization telemetry.
+    Strictly enforces the admission gate S_t subseteq M_ready(t).
     """
     def __init__(self, registry: Registry, k: int = 5):
         self.registry = registry
@@ -21,6 +22,7 @@ class SparseTopKRouter:
         self.beta_2 = 0.5  # Reliability weight
         self.beta_3 = 0.2  # Cost penalty weight
         self.beta_4 = 0.1  # Utilization balance (entropy/freshness) weight
+        self.beta_5 = 1000.0  # Penalty for unready/unverified models if evaluated
 
     def _compute_similarity(self, task_tags: List[str], model: MicroMaster) -> float:
         """
@@ -33,7 +35,7 @@ class SparseTopKRouter:
         union = len(set(task_tags).union(model.capability_tags))
         return intersection / union if union > 0 else 0.0
 
-    def route(self, task_tags: List[str], k_override: int = None) -> List[MicroMaster]:
+    def route(self, task_tags: List[str], k_override: Optional[int] = None) -> List[MicroMaster]:
         """
         Routes a task to the top-k specialists.
         Active set: S_t = topk(r^t, k)
@@ -42,13 +44,16 @@ class SparseTopKRouter:
         k = k_override if k_override is not None else self.k
         ready_models = self.registry.get_ready_models()
         
-        if not ready_models:
-            logger.warning("No ready models available for routing in M_ready(t).")
+        # Enforce strict admission check: only ModelStatus.READY models in M_ready(t)
+        admissible_models = [m for m in ready_models if m.status == ModelStatus.READY]
+
+        if not admissible_models:
+            logger.warning("No ready models available for routing in M_ready(t). Zero unverified activations allowed.")
             return []
 
         scored_models: List[Tuple[float, MicroMaster]] = []
         
-        for model in ready_models:
+        for model in admissible_models:
             # 1. Similarity score: sim(q_t, c_i)
             sim_score = self._compute_similarity(task_tags, model)
             
@@ -59,7 +64,6 @@ class SparseTopKRouter:
             cost_penalty = model.cost_per_call
             
             # 4. Utilization entropy / load balance: fresh_i equivalent
-            # Penalize heavily used models to avoid specialist collapse
             usage_count = self.utilization_telemetry.get(model.model_id, 0)
             balance_score = 1.0 / (1.0 + usage_count) 
 
@@ -68,8 +72,6 @@ class SparseTopKRouter:
                   (self.beta_2 * rel_score) - \
                   (self.beta_3 * cost_penalty) + \
                   (self.beta_4 * balance_score)
-
-            # Unavailable/unverified models are already excluded by get_ready_models()
 
             scored_models.append((r_t, model))
 

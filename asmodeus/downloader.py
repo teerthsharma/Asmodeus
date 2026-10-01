@@ -1,9 +1,10 @@
 import hashlib
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, Any, Union
 from pathlib import Path
 
 from asmodeus.registry import Registry, ModelStatus
+from asmodeus.manifest import ArtifactManifest
 
 logger = logging.getLogger(__name__)
 
@@ -20,15 +21,28 @@ class SLMDownloader:
         self.registry = registry
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-        # Database of expected checksums and provenance
+        # Database of expected checksums and provenance / manifests
         self.trusted_sources: Dict[str, dict] = {}
 
-    def add_trusted_source(self, model_id: str, expected_hash: str, provenance: str) -> None:
-        """Adds expected verification data for a model."""
-        self.trusted_sources[model_id] = {
+    def add_trusted_source(
+        self,
+        model_id: str,
+        expected_hash: str,
+        provenance: str,
+        manifest: Optional[Union[ArtifactManifest, Dict[str, Any]]] = None,
+    ) -> None:
+        """Adds expected verification data and optional manifest for a model."""
+        source_info: Dict[str, Any] = {
             "hash": expected_hash,
             "provenance": provenance
         }
+        if manifest is not None:
+            if isinstance(manifest, ArtifactManifest):
+                source_info["manifest"] = manifest
+            elif isinstance(manifest, dict):
+                source_info["manifest"] = ArtifactManifest.from_dict(manifest)
+
+        self.trusted_sources[model_id] = source_info
 
     def download(self, model_id: str, url: str) -> bool:
         """
@@ -69,10 +83,8 @@ class SLMDownloader:
 
     def _fetch_from_internet(self, url: str, path: Path) -> bool:
         """Simulate primary internet fetch logic."""
-        # Mock implementation for fetching SLM
         if "invalid" in url:
             return False
-        # In a real system, use requests or httpx to download chunked
         path.write_bytes(b"mock_model_data_stream")
         return True
         
@@ -89,19 +101,19 @@ class SLMDownloader:
 
     def _verify(self, model_id: str, path: Path) -> None:
         """
-        Verification gates: checksum and provenance constraints.
-        Ensures compromised models do not enter the swarm.
+        Verification gates: checksum, provenance, and artifact manifest constraints.
+        Ensures compromised or non-compliant models do not enter the swarm.
         """
         if model_id not in self.trusted_sources:
              logger.warning(f"No trusted source info for {model_id}. Proceeding with caution.")
              self.registry.update_status(model_id, ModelStatus.VERIFIED)
              return
 
-        expected_hash = self.trusted_sources[model_id]["hash"]
+        trusted = self.trusted_sources[model_id]
+        expected_hash = trusted["hash"]
         
         hasher = hashlib.sha256()
         with open(path, 'rb') as f:
-             # Read in chunks for large SLMs
              for chunk in iter(lambda: f.read(4096), b""):
                  hasher.update(chunk)
                  
@@ -111,8 +123,17 @@ class SLMDownloader:
             raise VerificationError(f"Checksum mismatch for {model_id}: expected {expected_hash}, got {actual_hash}")
 
         # Provenance check
-        provenance = self.trusted_sources[model_id]["provenance"]
+        provenance = trusted["provenance"]
         if "untrusted" in provenance.lower():
             raise VerificationError(f"Provenance check failed for {model_id}: {provenance}")
+
+        # Manifest check
+        if "manifest" in trusted and trusted["manifest"] is not None:
+            manifest: ArtifactManifest = trusted["manifest"]
+            try:
+                manifest.validate()
+            except ValueError as e:
+                raise VerificationError(f"Artifact manifest validation failed for {model_id}: {e}")
+            self.registry.attach_manifest(model_id, manifest)
 
         self.registry.update_status(model_id, ModelStatus.VERIFIED)
