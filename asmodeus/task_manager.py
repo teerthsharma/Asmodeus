@@ -80,13 +80,12 @@ class TaskManager:
 
             success = False
             prev_worker = None
+            failed_time = None
 
             for idx, worker in enumerate(assigned_workers):
                 if idx > 0 and prev_worker is not None:
                     # Rerouted to a secondary/backup worker
-                    start_time = time.perf_counter()
-                    # Log fallback transition
-                    latency_ms = (time.perf_counter() - start_time) * 1000.0
+                    latency_ms = (time.perf_counter() - failed_time) * 1000.0 if failed_time else 0.0
                     self.telemetry.record_fallback(FallbackEvent(
                         task_name=task.name,
                         trigger_reason=f"Primary worker {prev_worker.name} failed task",
@@ -100,6 +99,7 @@ class TaskManager:
                     success = True
                     break
                 else:
+                    failed_time = time.perf_counter()
                     # Execution failed on this worker
                     self.telemetry.record_fallback(FallbackEvent(
                         task_name=task.name,
