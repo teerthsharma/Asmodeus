@@ -1,6 +1,9 @@
+import logging
 from typing import Any, Iterable, Optional
 
 from .skills import SkillLike, coerce_skill_names
+
+logger = logging.getLogger(__name__)
 
 class Task:
     """
@@ -59,4 +62,4 @@ class Task:
         """
         Logs a task failure.
         """
-        pass # In a real system, this would log to a database or file
+        logger.warning(f"Task '{self.name}' failure recorded: {error}")
