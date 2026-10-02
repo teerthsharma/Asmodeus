@@ -1,6 +1,8 @@
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Union
 from dataclasses import dataclass, field
 from enum import Enum
+
+from asmodeus.manifest import ArtifactManifest
 
 class ModelStatus(Enum):
     PENDING = "pending"
@@ -23,6 +25,7 @@ class MicroMaster:
     status: ModelStatus = ModelStatus.PENDING
     reliability: float = 1.0  # Historical reliability [0.0, 1.0]
     cost_per_call: float = 1.0 # Cost metric
+    manifest: Optional[ArtifactManifest] = None
 
 class Registry:
     """
@@ -32,14 +35,37 @@ class Registry:
     def __init__(self):
         self.models: Dict[str, MicroMaster] = {}
 
-    def register_model(self, model_id: str, parameter_count: int, tags: List[str]) -> None:
+    def register_model(
+        self,
+        model_id: str,
+        parameter_count: int,
+        tags: List[str],
+        manifest: Optional[Union[ArtifactManifest, Dict]] = None,
+    ) -> None:
         """Registers a new model into the static topology."""
+        validated_manifest = None
+        if manifest is not None:
+            if isinstance(manifest, ArtifactManifest):
+                validated_manifest = manifest
+            elif isinstance(manifest, dict):
+                validated_manifest = ArtifactManifest.from_dict(manifest)
+
         if model_id not in self.models:
             self.models[model_id] = MicroMaster(
                 model_id=model_id,
                 parameter_count=parameter_count,
-                capability_tags=set(tags)
+                capability_tags=set(tags),
+                manifest=validated_manifest,
             )
+
+    def attach_manifest(self, model_id: str, manifest: Union[ArtifactManifest, Dict]) -> None:
+        """Attaches and validates a manifest for a registered model."""
+        if model_id in self.models:
+            if isinstance(manifest, ArtifactManifest):
+                manifest.validate()
+                self.models[model_id].manifest = manifest
+            elif isinstance(manifest, dict):
+                self.models[model_id].manifest = ArtifactManifest.from_dict(manifest)
 
     def update_status(self, model_id: str, status: ModelStatus) -> None:
         """Updates the status of a registered model."""
@@ -50,8 +76,19 @@ class Registry:
         """
         Returns the admission set M_ready(t).
         M_ready(t) = {m in M_internet | downloaded(m,t) and verified(m) and compatible(m)}
+        Enforces that status is ModelStatus.READY.
         """
-        return [m for m in self.models.values() if m.status == ModelStatus.READY]
+        ready_models = []
+        for m in self.models.values():
+            if m.status == ModelStatus.READY:
+                # If a manifest exists, validate it
+                if m.manifest is not None:
+                    try:
+                        m.manifest.validate()
+                    except ValueError:
+                        continue
+                ready_models.append(m)
+        return ready_models
 
     def get_models_by_capability(self, capability: str) -> List[MicroMaster]:
         """Filters ready models by a specific capability tag."""
