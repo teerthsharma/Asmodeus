@@ -28,6 +28,7 @@ class Task:
 
         if not self.required_skills:
             return True
+
         normalized_agent_skills = coerce_skill_names(agent_skills)
         return self.required_skills.issubset(normalized_agent_skills)
 
