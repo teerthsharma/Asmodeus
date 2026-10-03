@@ -26,7 +26,7 @@ def coerce_skill_names(skills: Optional[Iterable[SkillLike]]) -> Set[str]:
 
     normalized: Set[str] = set()
     for skill in skills:
-        raw_name = skill.name if isinstance(skill, Skill) else str(skill)
+        raw_name = skill if isinstance(skill, str) else (skill.name if isinstance(skill, Skill) else str(skill))
         canonical = normalize_skill_name(raw_name)
         if canonical:
             normalized.add(canonical)

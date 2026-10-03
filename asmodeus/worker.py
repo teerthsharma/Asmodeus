@@ -52,11 +52,14 @@ class WorkerAgent:
         return agents
 
     def skill_match_score(self, task: Task) -> int:
-        """Returns the number of required task skills this worker can satisfy."""
+        """
+        Returns the number of required task skills this worker can satisfy.
 
+        Optimization: Uses bitwise set intersection operator (&) for direct C-level set operations.
+        """
         if not task.requires_skill_match():
             return 0
-        return len(task.required_skills.intersection(self.skills))
+        return len(task.required_skills & self.skills)
 
     def can_handle_task(self, task: Task) -> bool:
         """True when this worker can satisfy all required skills for the task."""
