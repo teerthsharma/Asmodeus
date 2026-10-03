@@ -28,7 +28,7 @@ class ScoutAgent:
             return []
 
         if not task.requires_skill_match():
-            return [available_workers[0]]
+            return list(available_workers)
 
         candidates = [worker for worker in available_workers if worker.can_handle_task(task)]
         if not candidates:

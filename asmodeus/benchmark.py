@@ -41,6 +41,10 @@ class BenchmarkSuite:
         self.tasks: List[BenchmarkTask] = []
         self._build_default_task_pack()
 
+    def add_task(self, task: BenchmarkTask) -> None:
+        """Adds a custom benchmark task to the suite."""
+        self.tasks.append(task)
+
     def _build_default_task_pack(self) -> None:
         """Populates default benchmark task pack covering core capabilities."""
         self.tasks = [

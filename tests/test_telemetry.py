@@ -42,6 +42,34 @@ class TestTelemetryAndFallback(unittest.TestCase):
         events = telemetry.get_fallback_events()
         self.assertGreaterEqual(len(events), 0)
 
+    def test_telemetry_summary_stats(self):
+        telemetry = TelemetryCollector()
+        empty_stats = telemetry.get_summary_stats()
+        self.assertEqual(empty_stats["total_fallbacks"], 0)
+        self.assertEqual(empty_stats["average_reroute_latency_ms"], 0.0)
+
+        telemetry.record_fallback(FallbackEvent(
+            task_name="Task A",
+            trigger_reason="Timeout",
+            failed_specialist="Worker-1",
+            chosen_backup="Worker-2",
+            reroute_latency_ms=10.0,
+        ))
+        telemetry.record_fallback(FallbackEvent(
+            task_name="Task B",
+            trigger_reason="Timeout",
+            failed_specialist="Worker-1",
+            chosen_backup="Worker-3",
+            reroute_latency_ms=20.0,
+        ))
+
+        stats = telemetry.get_summary_stats()
+        self.assertEqual(stats["total_fallbacks"], 2)
+        self.assertEqual(stats["total_reroute_latency_ms"], 30.0)
+        self.assertEqual(stats["average_reroute_latency_ms"], 15.0)
+        self.assertEqual(stats["failed_specialists"]["Worker-1"], 2)
+        self.assertEqual(stats["trigger_reasons"]["Timeout"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -47,3 +47,39 @@ class TelemetryCollector:
     def clear(self) -> None:
         """Clears recorded events."""
         self.fallback_events.clear()
+
+    def get_summary_stats(self) -> Dict[str, Any]:
+        """
+        Computes aggregate metrics from recorded fallback events.
+        """
+        total_events = len(self.fallback_events)
+        if total_events == 0:
+            return {
+                "total_fallbacks": 0,
+                "total_reroute_latency_ms": 0.0,
+                "average_reroute_latency_ms": 0.0,
+                "failed_specialists": {},
+                "trigger_reasons": {},
+            }
+
+        total_latency = sum(e.reroute_latency_ms for e in self.fallback_events)
+        avg_latency = total_latency / total_events
+
+        failed_specialists: Dict[str, int] = {}
+        trigger_reasons: Dict[str, int] = {}
+
+        for event in self.fallback_events:
+            failed_specialists[event.failed_specialist] = (
+                failed_specialists.get(event.failed_specialist, 0) + 1
+            )
+            trigger_reasons[event.trigger_reason] = (
+                trigger_reasons.get(event.trigger_reason, 0) + 1
+            )
+
+        return {
+            "total_fallbacks": total_events,
+            "total_reroute_latency_ms": total_latency,
+            "average_reroute_latency_ms": avg_latency,
+            "failed_specialists": failed_specialists,
+            "trigger_reasons": trigger_reasons,
+        }
