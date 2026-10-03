@@ -28,6 +28,31 @@ class TestBenchmarkSuite(unittest.TestCase):
         self.assertIn("coding", report1.category_scores)
         self.assertIn("math", report1.category_scores)
 
+    def test_benchmark_add_custom_task(self):
+        from asmodeus.benchmark import BenchmarkTask
+
+        manager = TaskManager()
+        worker = WorkerAgent(name="Worker-Node-1", skills=["security"])
+        manager.register_worker(worker)
+
+        suite = BenchmarkSuite()
+        initial_task_count = len(suite.tasks)
+
+        custom_task = BenchmarkTask(
+            task_id="sec_01",
+            category="security",
+            description="Audit security headers",
+            required_skills=["security"],
+            evaluator=lambda res: True,
+        )
+        suite.add_task(custom_task)
+
+        self.assertEqual(len(suite.tasks), initial_task_count + 1)
+
+        report = suite.run(manager)
+        self.assertEqual(report.total_tasks, initial_task_count + 1)
+        self.assertIn("security", report.category_scores)
+
 
 if __name__ == "__main__":
     unittest.main()

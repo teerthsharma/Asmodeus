@@ -43,8 +43,9 @@ class TestAsmodeusSystem(unittest.TestCase):
         task = Task(name="Simple Task")
         assigned = self.scout.route_task_to_agents(task, self.manager.workers)
         
-        self.assertEqual(len(assigned), 1)
+        self.assertEqual(len(assigned), 2)
         self.assertEqual(assigned[0].name, "Worker-Node-1")
+        self.assertEqual(assigned[1].name, "Worker-Node-2")
 
     def test_subagent_skill_assignment_and_completion(self):
         specialist = self.manager.create_subagent(
