@@ -2026,3 +2026,36 @@ Filed 2026-10-04, before any PLAN item 5 result exists. It changes PLAN item 5's
     - **real-ψ**: the state is restricted to real amplitudes.
   - **"New" additionally requires** QF-LM to beat the dephased-HMM arm by > 2% val perplexity on ≥ 2/3 seeds.
 - **Fact for the record (Wilson, OWNERS.md §F).** arXiv 1711.01416 (Pestun, Terilla, Vlassopoulos 2017) owns "write = read" on language in formalism: the word is a measurement operator and the phrase is the operator product. So criterion (a) measures whether write = read pays; it does not make write = read new.
+
+## Amendment 3 (pre-result)
+Filed 2026-10-04, before any PLAN item 5 result exists. It adds two pre-checks and one kill test (Thirteen, `plans/thirteen.md` H1, H3; Park). A pre-check's outcome changes sizes only, never a bar.
+
+- **MM-QFA regular-language kill test (Thirteen H1).**
+  - Bed: synthetic regular languages, CPU:
+    - parity;
+    - "last symbol was a";
+    - "a then b within k";
+    - Dyck-1 at depth ≤ 4.
+  - Arms: QF-LM, QF-LM + embed, GRU, dephased-HMM, at equal FLOPs; 3 seeds.
+  - **Bar:** QF-LM is within 0.02 bits/symbol of the true entropy rate on all four languages.
+  - **Kill:** QF-LM fails on any language while the GRU succeeds. Write = read is then dead, or needs a classical register.
+  - **Fact check (Wilson).**
+    - [V] Yamakami 2004 (arXiv quant-ph/0410040, citing Kondacs–Watrous 1997 [32]): "no 1qfa recognizes the regular language Zero" = {x0 | x ∈ {0,1}*}, "and therefore, 1QFA cannot contain REG". "Last symbol was a" is exactly this language.
+    - [K, not fetched] Brodsky–Pippenger give a group-theoretic characterisation of measure-once 1QFAs; parity is a group language.
+    - [D] QF-LM is not literally a 1qfa: its think unitaries depend on ψ, which makes the map nonlinear in ψ, and it is a generator scored by likelihood, not a bounded-error acceptor. The theorem therefore motivates the test but does not predict its outcome.
+- **H3 Zipf-head pre-check (Thirteen).**
+  - Procedure: on TinyStories BPE-4096 validation, using a trained small GPT, count:
+    - the positions whose top-1 p ≥ ½;
+    - the number of distinct tokens at those positions.
+  - Reported, no bar. It informs N only.
+  - Fact basis: at most 2N outcomes can ever reach p ≥ ½ (`tests/test_facts.py::test_instrument_max_mass_bounded_by_dimension`).
+  - Size rule: if the distinct count is ≤ 2N for a smaller N than PLAN's N ≥ 2048, that N may be used, fixed before the bake-off.
+- **Holevo capacity pre-check (Park).**
+  - Fact: QF-LM's only channel from past to future is one pure ψ ∈ C^N, read by instruments. Any sequence of instruments composes into one instrument (one POVM on the record). So the information the future can extract about the past is I ≤ S(ρ) ≤ ln N nats = log₂ N bits.
+  - Evidence:
+    - [V] Wikipedia "Holevo's theorem": "the accessible information between X and Y is bounded by the Holevo information"; "given n qubits, only n classical bits of information can actually be retrieved".
+    - Bound by `tests/test_facts.py::test_holevo_one_instrument_carries_at_most_ln_N_nats`, including the saturating case.
+  - Procedure: before item 5, measure a small GPT's NLL saving on the second half of 200 TinyStories validation documents from seeing the first half. If the saving exceeds the threshold, grow N or move to a mixed-state ψ before the bake-off.
+  - **Fact check on the threshold.** The relevant per-document cap for a pure state in C^N with no shared entanglement is **ln N nats**, not 2·ln N. The factor 2 belongs to entanglement-assisted (superdense) coding, which QF-LM does not have.
+    - The threshold is therefore pinned at **ln N nats**, which is stricter than 2·ln N.
+    - Park's exact definition of the "NLL saving" (per document vs per token, which model, which cut) is **NOT RUNNABLE until a pre-result amendment** pins it.

@@ -56,3 +56,12 @@ def instrument_max_mass(K):
 
 def tokens_reachable(K, p):
     return int((max_masses(K) >= p).sum())
+
+
+def mutual_information_nats(K, psis):
+    """I(X; V) for X uniform over the rows of psis (pure states) and V the outcome of instrument K."""
+    P = np.array([[np.linalg.norm(k @ p) ** 2 for k in K] for p in psis])     # p(v | x)
+    pv = P.mean(0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = np.where(P > 0, P * np.log(P / pv), 0.0)
+    return float(t.sum(1).mean())

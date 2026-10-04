@@ -357,3 +357,18 @@ def test_diag_q_head_effects_commute():
     assert max(np.abs(a @ b - b @ a).max() for a in E[:10] for b in E[:10]) < 1e-12
     d = K.Q @ E[3] @ K.Q.conj().T                       # diagonal in the Q basis
     assert np.abs(d - np.diag(np.diag(d))).max() < 1e-12
+
+
+@pytest.mark.parametrize("N,V,X", [(2, 6, 40), (4, 30, 200), (8, 100, 300)])
+def test_holevo_one_instrument_carries_at_most_ln_N_nats(N, V, X):
+    """Amendment 3 / Park: with past x -> pure psi_x in C^N and the future read by one complete instrument
+    (any composition of instruments is again one), I(x; outcome) <= ln N nats (Holevo; tight only for
+    N orthogonal states read in their basis)."""
+    from ref.instrument_check import mutual_information_nats
+    rng = np.random.default_rng(N + V)
+    K = random_instrument(N, V, 1, rng)
+    psi = rng.normal(size=(X, N)) + 1j * rng.normal(size=(X, N))
+    psi /= np.linalg.norm(psi, axis=1, keepdims=True)
+    assert mutual_information_nats(K, psi) <= np.log(N) + 1e-9
+    basis = [np.diag(np.eye(N)[i]).astype(complex) for i in range(N)]       # projective, saturating case
+    assert abs(mutual_information_nats(basis, np.eye(N, dtype=complex)) - np.log(N)) < 1e-9
