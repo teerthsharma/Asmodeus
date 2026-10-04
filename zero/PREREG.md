@@ -2110,3 +2110,15 @@ Filed 2026-10-04, before any arm has run on these beds. Source: Thirteen, `zero/
     - If dephased-HMM passes, coherence hurts.
   - **Survive:** QF-LM passes all four decisive languages at some N ≤ 32.
   - Parity failure is reported as an optimisation failure, never as a capacity verdict.
+
+## Amendment 6 (pre-result)
+Filed 2026-10-04, before any PLAN item 5 result exists. Coordinator ruling on Cameron's sizing finding: QF-LM at N = 2048, |V| = 4096 is 54.6M params and 456M FLOPs/token, about 5× the item-5 budget.
+1. **Deciding item-5 bake-off size.**
+   - BPE |V| = 1024, N = 1024.
+   - Bound check (Wilson; `tests/test_facts.py::test_instrument_max_mass_bounded_by_dimension`): at most 2N outcomes can ever reach p ≥ ½. Every token being reachable therefore needs N ≥ |V|/2 = 512. N = 1024 gives a 2× margin.
+   - GPT and GRU are param-matched to QF-LM. A flop-matched GPT is also reported.
+   - The Holevo pre-check (Amendments 3 and 4) uses ln 1024 nats.
+   - Amendment 3's H3 reading applies to |V| = 1024.
+2. **Kaggle talking model (item 6)** keeps |V| = 4096, N = 2048. It is trained only after item 5 has decided.
+3. **One compute convention everywhere:** multiply-accumulates per token at the **measured expected** number of think steps. The worst case at s_max is reported beside it. This applies to every "equal FLOPs" statement for QF-LM arms in this PREREG and its amendments.
+4. **GRU flop-match grid:** Cameron widens it so that a flop-matched GRU exists at the item-5 size. The grid itself is a pin in `arms/` and is fixed before any item-5 result.
