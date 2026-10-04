@@ -2268,3 +2268,30 @@ Filed 2026-10-04, before any PLAN item 5 result exists.
 **Departs from.** No owner; the readout is unowned.
 
 **Order.** D1 and D6 are built first, RED-first (Kutner plan step 6). D3 joins step 4; D4 and D5 join step 8.
+
+## Amendment 9 (pre-result)
+Filed 2026-10-04, before any regular-language result exists. This records the coordinator's ruling on Thirteen's cost finding.
+
+**Cost finding** (house-events line 534, Thirteen; CPU, 2 threads, measured):
+- QF-LM costs 0.37–0.52 s/step (N 8–32). The GRU costs 0.016 s/step and the GPT 0.023 s/step.
+- The Amendment-5 grid is ≈ 390 QF-LM-family trainings, ≈ 110–115 h wall time at 2 processes.
+
+**Changes to the Amendment 5 Arms bullet.** Thirteen's cut is adopted.
+1. **Learning-rate tuning.**
+   - Each tuned arm still picks one lr from {1e-3, 3e-3, 1e-2} on tuning seed 3 only.
+   - Tuning runs now last **1,000 steps** (Adam, batch 64) instead of 5,000.
+   - The selection score is val ε after 1,000 steps.
+   - This applies to every tuned arm (QF-LM, +W_v, dephased-HMM, GRU, GPT), so tuning budgets stay equal across arms.
+2. **Reported arms reuse QF-LM's lr.** QF-LM nothink and QF-LM nonull are not tuned. Each uses the lr tuned for QF-LM at the same (N, language).
+3. **+W_v (+embed) arm.** It runs at **N = 16 only**. Its parametrisation is Amendment 7's: W_x = diag(exp(i·write_phase[x])).
+4. **Evaluation is unchanged:** 3 seeds × 5,000 steps, Adam, batch 64, test-split ε.
+
+**Bars and kills are unchanged** (Amendment 5).
+- **Fact (Wilson):** the QF-LM fail and survive conditions range over N ∈ {8, 16, 32} and do not involve +W_v, so they are unaffected.
+- **Fact (Wilson):** the diagnostic "if +W_v passes where QF-LM fails, the missing piece is the write path" is now read at N = 16 only. +W_v at N = 16 is compared with QF-LM at N = 16.
+
+**Per-cell training steps, counted from the rules above (new vs old):**
+- QF-LM and dephased-HMM: 3 × 1,000 + 3 × 5,000 = 18,000, down from 30,000.
+- nothink and nonull: 15,000, down from 30,000.
+- +W_v: two of its three N cells are removed.
+- Total wall time was not re-measured.
