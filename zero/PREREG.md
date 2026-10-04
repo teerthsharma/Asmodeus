@@ -2295,3 +2295,31 @@ Filed 2026-10-04, before any regular-language result exists. This records the co
 - nothink and nonull: 15,000, down from 30,000.
 - +W_v: two of its three N cells are removed.
 - Total wall time was not re-measured.
+
+## Amendment 10 (pre-result)
+Filed 2026-10-04 on the coordinator's ruling.
+
+**Trigger: a diagnostic, not a result** (house-events line 545, Kutner). Fixture smoke in the scratchpad: 1 seed, N = 64, r = 16, s_max = 4, 150 steps, not under this PREREG.
+- **ctc arm:** ρ_global went from 0.475 to 80.3 after unconstrained training. The arm was uncertified, every token ran s_max = 4 rounds, and the Spearman is undefined.
+- **Null-halting QF-LM:** Spearman(rounds, surprisal) = 0.223, below the 0.3 bar. This is reported only. It is not a result and is not scored.
+
+**1. The ctc arm keeps ρ_global ≤ 0.9 by construction. This replaces Amendment 8 D6's "certified fraction" framing.**
+- ρ_global is the global ℓ₁ Lipschitz bound of F on the simplex, implemented as `QFLM.rho_global` (`qflm/model.py:136-143`, proof in its docstring).
+- The angle map is rescaled on every forward pass: W_eff = ctc_W · min(1, 0.9 / ρ_raw), where ρ_raw is ρ_global at ctc_W.
+- **Fact (Wilson).** The bound is 2 Σ_l max_j (max_k |(A_θ W)_{l,j,k}| + max_k |(A_φ W)_{l,j,k}|), which is positively homogeneous of degree 1 in W. So the rescale gives ρ_global = min(ρ_raw, 0.9) exactly, up to floating point.
+- **Fact (Wilson).** The proof bounds the angle sensitivity uniformly in ψ, so the certificate is global: it holds for every token at once.
+- **Reported variant:** a hinge penalty λ · max(0, ρ_raw − 0.9) with no rescale. It is reported only.
+
+**2. D6 kill (replaces Amendment 8's "fewer than 50% certified").** The cap is breached on any token at eval.
+- The check is ρ_global > 0.9 + 1e-6 at the evaluated checkpoint, or any eval token running uncertified.
+- **Fact (Wilson).** Because the certificate is global and enforced by construction, this kill can only fire on an implementation fault. It is an integrity check, not an empirical falsifier.
+
+**3. D1's Spearman becomes the deciding D-test.** The bar Spearman(rounds run, surprisal) ≥ 0.3 on val (Amendment 8 D1) is now the real test. A value below 0.3 fails D1.
+- The TO2 convergence kill stays: non-convergence on more than 5% of tokens within 20 iterations.
+
+**Facts on what ρ ≤ 0.9 does and does not guarantee (Wilson; ε = 1e-4, ‖p₁ − p₀‖₁ ≤ 2):**
+- **Unique fixed point.** It exists and the iteration converges to it (Banach).
+- **Worst-case round bound:** ⌈log(ε/2) / log 0.9⌉ + 1 = 95. This exceeds s_max = 4, so certification does **not** guarantee a halt within s_max. Capped tokens are still possible and are recorded as non-halted.
+- A guaranteed halt within 4 rounds would need ρ < (ε/2)^{1/3} = 0.0368.
+- A guaranteed TO2 convergence within 20 iterations would need ρ < (ε/2)^{1/19} = 0.594.
+- At ρ ≤ 0.9, both rates are empirical.
