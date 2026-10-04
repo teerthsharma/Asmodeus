@@ -3,13 +3,16 @@ held-out-clean BPE, pinned corpus hash, n-gram contamination, resumable token st
 import codecs
 import copy
 import hashlib
+import json
 import re
+from pathlib import Path
 
 import numpy as np
 import torch
 from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers
 
 EOT = "<|endoftext|>"
+SPLIT_SALT, SPLIT_FRACTIONS = "lang-v1", (0.90, 0.05, 0.05)
 
 
 def iter_docs(path, sep=EOT, chunk_bytes=1 << 20):
@@ -34,7 +37,7 @@ def normalise(text):
     return " ".join(text.split())
 
 
-def split_of(doc, fractions=(0.90, 0.05, 0.05), salt="lang-v1"):
+def split_of(doc, fractions=SPLIT_FRACTIONS, salt=SPLIT_SALT):
     h = hashlib.sha256((salt + normalise(doc)).encode("utf-8")).digest()
     u = int.from_bytes(h[:8], "big") / 2**64
     acc = 0.0
@@ -70,6 +73,35 @@ def pin(path, expected):
     got = corpus_hash(path)
     if got != expected:
         raise ValueError(f"corpus hash mismatch for {path}: {got} != {expected}")
+
+
+def _file_sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def build_tokenizers(path, out_dir, sizes=(1024, 4096)):
+    """One BPE per size, all trained on the same train split; hash-pinned manifest -> returned dict."""
+    out_dir = Path(out_dir)
+    toks = {}
+    for v in sizes:
+        f = out_dir / f"tok_{v}.json"
+        train_bpe(path, v, f)
+        toks[str(v)] = {"file": f.name, "sha256": _file_sha(f)}
+    man = {"corpus_sha256": corpus_hash(path), "split": {"salt": SPLIT_SALT, "fractions": list(SPLIT_FRACTIONS)},
+           "tokenizers": toks}
+    (out_dir / "manifest.json").write_text(json.dumps(man, indent=1))
+    return man
+
+
+def load_tokenizer(manifest_path, vocab, data):
+    manifest_path = Path(manifest_path)
+    man = json.loads(manifest_path.read_text())
+    ent = man["tokenizers"][str(vocab)]                        # KeyError for an unknown size
+    pin(data, man["corpus_sha256"])
+    f = manifest_path.parent / ent["file"]
+    if _file_sha(f) != ent["sha256"]:
+        raise ValueError(f"tokenizer hash mismatch for {f}")
+    return Tokenizer.from_file(str(f))
 
 
 def _ngrams(doc, n):

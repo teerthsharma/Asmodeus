@@ -28,7 +28,7 @@ def _lam_value(arm):
 
 
 def test_candidates_are_the_three():
-    assert CANDIDATES == ("atlas", "phase_sphere")   # hybrid -> attic; ASMODEOUS joins when atlas/asmodeous.py lands
+    assert CANDIDATES == ("atlas", "phase_sphere", "asmodeous")   # hybrid -> attic
 
 
 @pytest.mark.parametrize("name", CANDIDATES)
@@ -67,6 +67,8 @@ def test_lgiven_state_poison_is_invisible(name):
 @pytest.mark.parametrize("name", CANDIDATES)
 def test_shared_knobs(name):
     knobs = shared_knobs(name)
+    if knobs["lam"] is None or knobs["momentum"] is None:
+        pytest.skip(f"{name} lacks a shared knob")
     arm = build(name, 256, 3, 2, tiny=True, lam=0.0, ema=0.0)
     assert _lam_value(arm) == 0.0
     assert getattr(arm, knobs["momentum"]) == 0.0

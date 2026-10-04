@@ -101,7 +101,7 @@ def cohen_kappa(r1, r2):
     po = sum(a == b for a, b in zip(r1, r2)) / n
     c1, c2 = Counter(r1), Counter(r2)
     pe = sum(c1[k] * c2[k] for k in c1) / n ** 2
-    return po
+    return 1.0 if pe == 1 else (po - pe) / (1 - pe)
 
 
 def weighted_kappa(r1, r2, weights="quadratic", categories=range(1, 6)):
@@ -182,11 +182,38 @@ def _clopper_pearson(k, n, alpha=0.05):
 
 def tie_test(prefs):
     """Exact two-sided sign test on non-ties + exact 95% CI of A's win-rate.
-    tie=True iff p>=0.05 AND CI contains 0.5. Low power: with ~50 items a
+    sign_test_nonsig=True iff p>=0.05 AND CI contains 0.5 (weak rule, NOT the tie
+    decision: see equivalence_tie, PREREG Amendment 1). Low power: with ~50 items a
     non-significant result is weak evidence of a tie, hence n_nontie is returned."""
     a, b = prefs.count("A"), prefs.count("B")
     n = a + b
     p = 1.0 if n == 0 else min(1.0, 2 * _binom_cdf(min(a, b), n, 0.5))
     lo, hi = _clopper_pearson(a, n)
     return {"wins_a": a, "wins_b": b, "ties": prefs.count("tie"), "n_nontie": n,
-            "p_two_sided": p, "ci95": (lo, hi), "tie": p >= 0.05 and lo <= 0.5 <= hi}
+            "p_two_sided": p, "ci95": (lo, hi), "sign_test_nonsig": p >= 0.05 and lo <= 0.5 <= hi}
+
+
+def equivalence_tie(prefs_by_prompt, margin=(0.40, 0.60), n_boot=2000, seed=0, ci=0.90):
+    """TOST tie rule (PREREG Amendment 1): cluster-bootstrap (prompts resampled) percentile
+    CI of A's pooled non-tie win-rate must lie strictly inside `margin`."""
+    import numpy as np
+    if not prefs_by_prompt:
+        raise ValueError("no prompts")
+    rows = []
+    for g in prefs_by_prompt:
+        bad = set(g) - {"A", "B", "tie"}
+        if bad:
+            raise ValueError(f"unknown label(s): {sorted(bad)}")
+        rows.append((g.count("A"), g.count("A") + g.count("B")))
+    wins, nn = np.array(rows, dtype=float).T
+    if nn.sum() == 0:
+        raise ValueError("no non-tie judgements")
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(rows), size=(n_boot, len(rows)))
+    w, n = wins[idx].sum(1), nn[idx].sum(1)
+    rates = w[n > 0] / n[n > 0]
+    q = (1 - ci) / 2
+    lo, hi = (float(x) for x in np.quantile(rates, [q, 1 - q]))
+    return {"win_rate": float(wins.sum() / nn.sum()), "ci": (lo, hi), "n_prompts": len(rows),
+            "n_nontie": int(nn.sum()), "ties": sum(g.count("tie") for g in prefs_by_prompt),
+            "tie": margin[0] < lo and hi < margin[1]}

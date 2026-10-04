@@ -115,3 +115,30 @@ The selected config is frozen and trained on seeds 0, 1, 2.
 
 - In train mode, the PEER BatchNorm query statistics pool over B·T tokens, so they mix time steps. Eval-mode causality is tested; train-time leakage is batch statistics only and carries no state.
 - In chart-AE / lazy chart-AE rollout, membership is re-read from the predicted g. This is valid because the fidelity term places g in E's space, but it is untested on a bed.
+
+## 6. Item-5 LM baselines (Amendment 6: BPE |V| = 1024, QF-LM N = 1024, s_max = 4)
+
+Convention: MACs per token. QF-LM's `active_flops()` reports real FLOPs at the worst case (s_max rounds); MAC = FLOPs / 2.
+QF-LM(N=1024, V=1024): **11,557,888 params**. MACs per token by think steps s (from the `QFLM.active_flops` formula; s = 4 equals the method):
+
+| s | 0 | 1 | 2 | 3 | 4 (worst) |
+|---|---|---|---|---|---|
+| MAC/token | 1,123,840 | 12,806,144 | 24,488,448 | 36,170,752 | 47,853,056 |
+
+The think round dominates: it costs about 11.7M MAC per step at N = 1024, against about 1.1M for emit + Lüders.
+
+Baselines (`arms.match.match_lm`, tol ±5%, GRU width grid widened to 4096; GPT seq_len 256, 4 heads; all tied):
+
+| Arm | Config | Params | MAC/token | Status |
+|---|---|---|---|---|
+| GPT param-matched | d_model 428, 5 layers | 11,567,556 | 11,979,292 | deciding |
+| GRU param-matched | hidden = d_emb 512, 7 layers | 11,556,864 | 11,534,336 | deciding |
+| GPT flop-matched, s = 1 | d_model 572, 3 layers | 12,534,236 | 12,805,364 | reported |
+| GPT flop-matched, s = 2 | d_model 344, 16 layers | 23,233,072 | 24,487,296 | reported |
+| GPT flop-matched, s = 4 | d_model 404, 23 layers | 45,686,340 | 47,849,356 | reported (worst case) |
+| GRU flop-matched, s = 4 | 1246, 5 layers | 47,891,256 | 47,851,384 | reported (worst case) |
+
+Rule for the reported flop-matched GPT:
+- The "measured expected think steps" s̄ is the mean think rounds per token of the trained QF-LM on val, measured before the baselines' final runs.
+- The flop-matched GPT is re-sized by `match_lm("gpt", flops=MAC(s̄), params=11,557,888, vocab=1024, n_head=4, seq_len=256)`. The s = 1, 2, 4 rows bracket it.
+- At s̄ → 0, QF-LM costs 1.1M MAC and the flop-matched GPT degenerates (d_model 72, 13 layers); the param-matched rows stay deciding.

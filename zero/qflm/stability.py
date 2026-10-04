@@ -1,7 +1,16 @@
 import torch
 
 
-def renorm_psi(psi):
+def renorm_psi(psi, bad=None):
+    s = psi.abs().amax(-1, keepdim=True)  # max-abs scale first: fp32 norm of 1e-30 amps underflows
+    zero = (s == 0).squeeze(-1)
+    if bad is not None:
+        bad |= zero  # sync-free device flag; zero rows come out NaN (0/0), no eps
+    elif not (psi.is_cuda and torch.cuda.is_current_stream_capturing()):
+        idx = zero.reshape(-1).nonzero().flatten().tolist()
+        if idx:
+            raise ValueError(f"renorm_psi: zero-norm rows {idx}")
+    psi = psi / s
     return psi / torch.linalg.vector_norm(psi, dim=-1, keepdim=True)
 
 
@@ -11,7 +20,7 @@ def log_born(amp):
 
 
 def null_record_logp(log_p_null, log_p_x):
-    z = torch.zeros_like(log_p_null[..., :1])
+    z = log_p_null.new_zeros(*log_p_null.shape[:-1], 1)
     prefix = torch.cat([z, torch.cumsum(log_p_null, -1)], -1)  # exclusive cumsum
     return torch.logsumexp(prefix + log_p_x, dim=-1)
 

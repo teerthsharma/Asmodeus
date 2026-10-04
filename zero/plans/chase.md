@@ -30,10 +30,13 @@ Stance: conservative. Sources are Wikipedia pages fetched on 2026-10-04. Derived
    - Fact: LSE(x) = x* + log Σ exp(xᵢ − x*), with x* = max xᵢ. Subtracting the maximum prevents overflow and underflow.
    - What it means for QF-LM: compute log p(x) = LSE over s of (Σ_{i<s} log p_null,i + log p_x,s). Never form a product of probabilities. This is `null_record_logp`, with test `test_null_record_no_underflow`.
 
-6. **Summation error makes PLAN item 3's ±1e-6 bar too tight in fp32.**
+6. **The summation order decides whether PLAN item 3's ±1e-6 bar holds in fp32.**
    - Source: https://en.wikipedia.org/wiki/Kahan_summation_algorithm
    - Fact: naive summation has an O(εn) worst-case error and O(ε√n) RMS error. Pairwise summation gives O(ε log n). Kahan summation gives O(ε).
-   - What it means for QF-LM: Σ_v p(v) over 4096 outcomes in fp32 has an RMS error of about 6e-8·64 ≈ 4e-6 under naive order. So the PLAN item 3 bar "Σp + p_null = 1 ± 1e-6" fails in fp32 for reasons unrelated to the model.
+   - Measured here, CPU, |V| = 4096:
+     - `torch.sum` in fp32 (pairwise or cascade) gave a maximum error of 1.19e-7 over 20 draws;
+     - a sequential fp32 accumulation loop gave errors up to 1.19e-6 over 5 draws, which already breaks ±1e-6.
+   - What it means for QF-LM: the PLAN item 3 bar "Σp + p_null = 1 ± 1e-6" holds only when the sum uses a pairwise reduction. A hand-written per-outcome accumulation (a custom CUDA kernel or a Python loop) fails the bar for reasons unrelated to the model.
    - Recommendation: test completeness in float64 at ±1e-6, or in fp32 at ±1e-5 (the guard test uses 1e-5). Logged as a finding for Kutner.
 
 7. **Orthogonality drifts unless it is rebuilt from parameters.**
@@ -61,7 +64,7 @@ Stance: conservative. Sources are Wikipedia pages fetched on 2026-10-04. Derived
     - Fact: LayerNorm divides by √(σ² + ε). RMSNorm sets ε = 0.
     - What it means for QF-LM: `renorm_psi` is RMSNorm on C^N with no ε. Add no ε, because it would break ‖ψ‖ = 1 exactly. Instead guarantee ‖K_xψ‖ > 0 structurally (finding 4), and raise an error, not clamp, if it is 0.
 
-## Plan after this session (8 steps)
+## Plan after this session (8 steps; steps 9-10 added in Wander below)
 
 1. Land `qflm/stability.py` and `tests/test_qflm_stability.py` (the nurse's work this session). Mutations must go RED.
 2. Get Kutner's primitives to route their nll through `log_born` and `null_record_logp`, and their Lüders step through `renorm_psi`. Add an import-parity test: Kutner's nll must equal the guarded reference in float64.
@@ -71,3 +74,32 @@ Stance: conservative. Sources are Wikipedia pages fetched on 2026-10-04. Derived
 6. Run a 10k-token CUDA-graph soak with Taub (item 4): no NaN, ‖ψ‖ drift < 1e-5, and orth_error < 1e-5 measured on the GPU and not only on the CPU.
 7. Add a min-p telemetry counter (the fraction of steps with log p < −60) to the run logs, so underflow pressure is visible before it causes NaN.
 8. Run idle-time PLAN item 8 only (Hopf control), and never ahead of items 5 and 6.
+
+## Wander (no agenda)
+
+This crawl started at **Dynamical system**, followed whatever pulled, read 16 articles, and reached a maximum depth of 5 hops.
+
+**Path, in order:**
+- **Main chain:** Dynamical system → Outer billiard → Penrose tiling → Wang tile → Diaspora (novel; "Wang's Carpets") → Schild's ladder.
+- **Side branches:** Sharkovskii's theorem and Circle map (Arnold tongues), both off Dynamical system.
+- **Second chain:** Dynamical system → Kicked rotator → Anderson localization → Many-body localization → Time crystal → Floquet theory. Many-body localization also led to Quantum scar → Quantum ergodicity → Eigenstate thermalization hypothesis.
+
+### The 5 most surprising things
+1. **Kicked rotator:** quantum dynamical localization suppresses diffusion that is unbounded classically. Adding noise destroys the localization and restores diffusion.
+2. **Many-body localization:** the system never thermalises. Local observables keep memory of the initial state forever, entanglement grows only as log t, and emergent local integrals of motion ("l-bits") appear.
+3. **Quantum scars:** eigenstates of a chaotic system have enhanced probability along *unstable* periodic orbits (Heller 1984). Rydberg-atom chains revive instead of thermalising.
+4. **Schild's ladder:** parallel transport can be built from geodesics alone. Its error equals the integral of curvature over the enclosed triangle, it is first order, and it is necessarily torsion-free.
+5. **Outer billiard:** whether unbounded orbits exist stayed open for about 50 years (Moser and Neumann posed it in the late 1950s). Schwartz answered it in 2007 using the Penrose kite. Separately, the smallest aperiodic Wang set (Jeandel and Rao, 2015) has 11 tiles and 4 colours.
+
+### Connections to Asmodeous (hunch, unmeasured)
+- **Hunch: dynamical localization of ψ.** Lüders writes plus butterfly think steps act as periodic kicks. A trained QF-LM may localise ψ in a few directions of CP^{N−1}. The effective N would then be small, and the bound "at most 2N tokens reach p ≥ ½" would bite at N_eff, not at N = 2048. Data-driven writes play the role of noise, which delocalises ψ, so this could go either way. Cheap check: participation ratio of Qψ, and the rank of the ψ trajectory over 1k tokens.
+- **Hunch: MBL against ETH is memory against forgetting.** Context memory needs a non-thermalising write/think map. Chaotic, scrambling think unitaries would push the state toward thermal and erase old tokens. Integrable, l-bit-like think steps would keep them. Expect long-range-token loss to get *worse* as more think steps are added unless the angles stay near-integrable.
+- **Hunch: scars as the mechanism behind repetition.** LM degeneration into repetition loops may appear in QF-LM as ψ scarring on a periodic orbit. Detector: the revival fidelity |⟨ψ_t|ψ_{t+k}⟩| during generation.
+- **Hunch: Floquet and time crystals, a period-2 null loop.** Repeating the same think unitary is a periodic drive. A subharmonic (period-doubled) response would make ψ alternate and never emit, which the S ≤ 4 cap hides. Halting is undecidable in general (Wang tile, Halting problem), so the cap is honest, but the cap-hit rate must be logged.
+- **Hunch: Schild's ladder for the holonomy readout (item 7).** A discrete Bargmann loop is a first-order transport, with error equal to the curvature flux. Paraphrase-loop holonomy should be checked for invariance under refining the loop (inserting midpoints) before its value is trusted.
+
+### Plan changes
+The wander changed my mind on one point: the stability work guarded *numerics*, while the bigger risk is *dynamics*, where ψ localises, thermalises or loops. Two steps are added to the plan above, which brings it to 10 steps.
+
+9. Dynamics telemetry in the bake-off harness, with the same telemetry for all QF-LM arms: participation ratio of Qψ, ψ-trajectory rank over 1k tokens, null-loop cap-hit rate, and period-2 detection, |⟨ψ_t|ψ_{t+2}⟩| > 0.99 inside null loops. Write the RED tests on synthetic localised, period-2 and scrambling maps first.
+10. Revival-fidelity detector during generation (scar hunch), reported beside the repetition rate for QF-LM and GPT. This is an eval readout only, never a training signal.

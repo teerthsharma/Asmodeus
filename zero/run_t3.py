@@ -80,7 +80,7 @@ def sigreg_chunked(x, grp=None, n_groups=None, num_slices=256, t_max=3.0, n_poin
     c = cnt[ok].to(x.dtype)[:, None, None]
     err = (re[ok] / c - phi).square() + (im[ok] / c).square()
     m2 = q[ok] / c[:, :, 0]
-    return (err @ (w * phi)).mean()
+    return (err @ (w * phi)).mean() + ANCHOR * (m2 + 1e-6).log().square().mean()
 
 
 class SoftAtlas(nn.Module):

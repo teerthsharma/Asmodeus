@@ -1,6 +1,7 @@
 """Chart-Autoencoder-style multi-chart JEPA (Schonsheck, Chen, Lai, arXiv 1912.10094, Fig. 3 / Eq. 3), dense.
 
-CAE: initial encoder E: x -> z in R^l; chart encoders E_k: z -> (0,1)^d_c; chart decoders D_k: chart -> R^l;
+CAE: initial encoder E: x -> z in R^l; chart encoders E_k: z -> (-1,1)^d_c (tanh; CAE uses (0,1) - sigmoid charts
+left seed 1 at erank(g) 1.75 on s2: decoders got too little signal from coordinates centred at 0.5); chart decoders D_k: chart -> R^l;
 chart predictor P -> p = softmax over ALL charts; loss = min_k e_k - sum_k softmax(-e)_k log p_k.
 JEPA adaptation (no pixel decoder; every target is a latent):
   e_k = ||D_k(z_k) - sg(E_tgt(o))||^2 + ||z_k + P_k(z_k, a) - sg(E_tgt_k(E_tgt(o')))||^2  (chart fidelity + dynamics)
@@ -19,6 +20,7 @@ from arms import LAM, LAM_BAL, Arm, Heads, frozen_copy, macs, mlp, sigreg
 
 
 class ChartAEJEPA(Arm):
+    chart_act = staticmethod(torch.tanh)
     ln_z = True  # CAE's E is a minimal-embedding step: fixed scale, so 2-D charts can reconstruct it
     def __init__(self, D: int, A: int, K: int = 4, d_c: int = 2, D_g: int = 8, hidden: int = 128,
                  chart_hidden: int = 32, depth: int = 2, lam: float = LAM, tau: float = 0.996, lam_bal: float = LAM_BAL):
@@ -34,7 +36,7 @@ class ChartAEJEPA(Arm):
         self.tgt_E, self.tgt_Ec = frozen_copy(self.E), frozen_copy(self.Ec)
 
     def _charts(self, z):  # z [N, Dg] -> chart coords [N, K, d_c]
-        return torch.sigmoid(self.Ec(z))
+        return self.chart_act(self.Ec(z))
 
     def _advance(self, zc, a):  # zc [N, K, d_c], a [N, A]
         return zc + self.Pc(torch.cat([zc, a[:, None].expand(-1, self.K, -1)], -1))
@@ -62,7 +64,7 @@ class ChartAEJEPA(Arm):
         with torch.no_grad():  # EMA targets: a detached online z is a moving target and diverges
             B, T, _ = obs.shape
             tz = self.tgt_E(obs)
-            tzc = torch.sigmoid(self.tgt_Ec(tz[:, 1:].reshape(B * (T - 1), -1))).view(B, T - 1, self.K, -1)
+            tzc = self.chart_act(self.tgt_Ec(tz[:, 1:].reshape(B * (T - 1), -1))).view(B, T - 1, self.K, -1)
         e = ((rec[:, :-1] - tz[:, :-1, None]) ** 2).sum(-1) + ((zh[:, :-1] - tzc) ** 2).sum(-1)  # [B,T-1,K]
         fid = e.min(-1).values.mean()
         chart = -(F.softmax(-e.detach(), -1) * p[:, :-1].clamp_min(1e-12).log()).sum(-1).mean()

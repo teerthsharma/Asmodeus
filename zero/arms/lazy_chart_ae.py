@@ -36,7 +36,7 @@ class LazyChartAEJEPA(ChartAEJEPA):
         return H.one(x.flatten(0, 1), idx.flatten()).view(*idx.shape, -1)
 
     def _lazy_coords(self, H, z, idx):
-        return torch.sigmoid(self._one(H, z[:, None].expand(-1, self.m, -1), idx))
+        return self.chart_act(self._one(H, z[:, None].expand(-1, self.m, -1), idx))
 
     def _lazy_step(self, zc, a, idx):
         return zc + self._one(self.Pc, torch.cat([zc, a[:, None].expand(-1, self.m, -1)], -1), idx)
@@ -78,7 +78,7 @@ class LazyChartAEJEPA(ChartAEJEPA):
             tz = self.tgt_E(obs)
             tz1 = tz[:, 1:].reshape(-1, tz.shape[-1])
             if self.dense:
-                tzc = torch.sigmoid(self.tgt_Ec(tz1)).gather(1, it[..., None].expand(-1, -1, zh.shape[-1]))
+                tzc = self.chart_act(self.tgt_Ec(tz1)).gather(1, it[..., None].expand(-1, -1, zh.shape[-1]))
             else:
                 tzc = self._lazy_coords(self.tgt_Ec, tz1, it)
         e = ((rec[:, :-1].reshape(-1, self.m, rec.shape[-1]) - tz[:, :-1].reshape(-1, 1, tz.shape[-1])) ** 2).sum(-1) \

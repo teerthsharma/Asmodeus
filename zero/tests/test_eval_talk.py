@@ -2,6 +2,7 @@ import json
 import shutil
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 import eval_talk as et
@@ -144,10 +145,11 @@ def test_proxy():
 
 def test_tie_test():
     t = et.tie_test(["A"] * 25 + ["B"] * 25)
-    assert t["p_two_sided"] == pytest.approx(1.0) and t["tie"] is True
+    assert t["p_two_sided"] == pytest.approx(1.0) and t["sign_test_nonsig"] is True
+    assert "tie" not in t
     assert t["n_nontie"] == 50
     t = et.tie_test(["A"] * 40 + ["B"] * 10)
-    assert t["p_two_sided"] < 0.001 and t["tie"] is False
+    assert t["p_two_sided"] < 0.001 and t["sign_test_nonsig"] is False
     assert t["ci95"][0] > 0.5
     t = et.tie_test(["A"] * 9 + ["B"] + ["tie"] * 5)
     assert t["p_two_sided"] == pytest.approx(22 / 1024)
@@ -155,3 +157,45 @@ def test_tie_test():
     lo, hi = t["ci95"]
     assert lo < 0.9 < hi
     assert et.tie_test(["tie"] * 3)["p_two_sided"] == 1.0
+
+
+def _flat(groups):
+    return [x for g in groups for x in g]
+
+
+def test_equivalence_tie_balanced():
+    groups = [list("ABABA")] * 25 + [list("BABAB")] * 25
+    r = et.equivalence_tie(groups)
+    assert r["win_rate"] == 0.5 and r["tie"] is True
+    assert r["n_prompts"] == 50 and r["n_nontie"] == 250 and r["ties"] == 0
+
+
+def test_equivalence_tie_rejects_weak_sign_tie():
+    groups = [["A"]] * 31 + [["B"]] * 19
+    assert et.tie_test(_flat(groups))["sign_test_nonsig"] is True
+    r = et.equivalence_tie(groups)
+    assert r["tie"] is False
+
+
+def test_equivalence_tie_cluster_wider_than_pseudoreplicated():
+    groups = [["A"] * 5] * 30 + [["B"] * 5] * 20
+    r = et.equivalence_tie(groups)
+    assert r["win_rate"] == pytest.approx(0.6) and r["tie"] is False
+    flat = et.equivalence_tie([[x] for x in _flat(groups)])
+    assert (r["ci"][1] - r["ci"][0]) > (flat["ci"][1] - flat["ci"][0])
+
+
+def test_equivalence_tie_determinism_and_errors():
+    groups = [["A", "B", "tie"], ["A", "A"], ["B"]]
+    assert et.equivalence_tie(groups)["ci"] == et.equivalence_tie(groups)["ci"]
+    with pytest.raises(ValueError):
+        et.equivalence_tie([])
+    with pytest.raises(ValueError):
+        et.equivalence_tie([["A", "left"]])
+
+
+def test_equivalence_tie_random_balanced_ci_brackets_half():
+    rng = np.random.default_rng(1)
+    groups = [list(rng.choice(["A", "B"], 5)) for _ in range(50)]
+    lo, hi = et.equivalence_tie(groups)["ci"]
+    assert lo < 0.5 < hi

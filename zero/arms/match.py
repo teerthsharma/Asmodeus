@@ -10,6 +10,7 @@ Models are built on the meta device: sizing costs no memory.
 import torch
 
 from arms.chart_ae import ChartAEJEPA
+from arms.lm_baselines import GPTLM, GRULM
 from arms.lazy_chart_ae import LazyChartAEJEPA
 from arms.mop_jepa import MoPJEPA
 from arms.peer_jepa import PEERJEPA
@@ -74,6 +75,34 @@ def match(arm: str, flops: int, params: int, tol: float = 0.05, min_width: int =
     if out["both"] is None:
         out["note"] = (f"{arm}: params/FLOPs ratio out of reach (dense: ~1; lazy top-1 of K: < K); run flop_matched "
                        f"(P={fm['params']}) and param_matched (F={pm['flops']}) as two baselines")
+    return out
+
+
+def match_lm(arm: str, flops: int, params: int, tol: float = 0.05, max_layers: int = 24, max_width: int = 4096, **base):
+    """arm in {"gpt", "gru"}; base: vocab and n_head+seq_len (gpt) or optional d_emb (gru). Knobs: width
+    (gpt d_model in steps of n_head, gru hidden) and n_layer. Same return format as match()."""
+    cls = GPTLM if arm == "gpt" else GRULM
+
+    def kw(w, L):
+        if arm == "gpt":
+            return {**base, "d_model": w * base["n_head"], "n_layer": L}
+        return {"d_emb": w, **base, "hidden": w, "n_layer": L}
+
+    def rec(w, L):
+        with torch.device("meta"):
+            m = cls(**kw(w, L))
+        return dict(kw=kw(w, L), flops=m.active_flops(), params=m.n_params())
+
+    fit = lambda L, i, t: rec(_bisect(lambda w: rec(w, L)[("flops", "params")[i]], t, hi=max_width), L)
+    err = lambda r, i, t: abs(r[("flops", "params")[i]] / t - 1)
+    fm = min((fit(L, 0, flops) for L in range(1, max_layers + 1)), key=lambda r: err(r, 0, flops))
+    cands = [fit(L, 1, params) for L in range(1, max_layers + 1)]
+    pm = min(cands, key=lambda r: err(r, 1, params))
+    ok = [r for r in cands if max(err(r, 0, flops), err(r, 1, params)) <= tol]
+    out = dict(both=min(ok, key=lambda r: max(err(r, 0, flops), err(r, 1, params))) if ok else None,
+               flop_matched=fm, param_matched=pm)
+    if out["both"] is None:
+        out["note"] = f"{arm}: no (width, n_layer) hits both within {tol}; run flop_matched and param_matched"
     return out
 
 

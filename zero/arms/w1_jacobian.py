@@ -1,6 +1,6 @@
 """w1 (orientability) from Jacobian-determinant signs of learned chart transition maps (Paluzo-Hidalgo & Ike, arXiv 2602.22873).
 
-Transition j -> k of a multi-chart autoencoder is tau_jk(u) = sigmoid(Ec_k(Dc_j(u))); sign det J_tau_jk is an edge cocycle,
+Transition j -> k of a multi-chart autoencoder is tau_jk(u) = chart_act(Ec_k(Dc_j(u))); sign det J_tau_jk is an edge cocycle,
 and w1 = 0 iff that cocycle is a coboundary (every cycle has sign product +1).
 """
 import torch
@@ -14,16 +14,16 @@ def jac_sign(f, u):
 
 
 def transition_fn(model, j, k):
-    """u -> sigmoid(Ec_k(Dc_j(u))); only charts j and k evaluate."""
+    """u -> chart_act(Ec_k(Dc_j(u))); only charts j and k evaluate."""
     idx = lambda u, c: torch.full((u.shape[0],), c, dtype=torch.long)
-    return lambda u: torch.sigmoid(model.Ec.one(model.Dc.one(u, idx(u, j)), idx(u, k)))
+    return lambda u: model.chart_act(model.Ec.one(model.Dc.one(u, idx(u, j)), idx(u, k)))
 
 
 def edge_signs(model, obs, tau=0.2, min_points=8):
     """{(j,k): (sign, agreement)} for j<k with >= min_points rows where both memberships >= tau."""
     with torch.no_grad():
         z = model.E(obs).reshape(-1, model.Ec.W1.shape[1])
-        p, zc = model.member(z).softmax(-1), torch.sigmoid(model.Ec(z))
+        p, zc = model.member(z).softmax(-1), model.chart_act(model.Ec(z))
     out = {}
     for j in range(model.K):
         for k in range(j + 1, model.K):

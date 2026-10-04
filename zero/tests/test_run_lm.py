@@ -35,7 +35,7 @@ class ToyQF(torch.nn.Module):
         logits = self.head(h)
         ent = -(logits.log_softmax(-1).exp() * logits.log_softmax(-1)).sum(-1).detach()
         steps = torch.zeros_like(ent)
-        steps[:, 1:] = ent[:, :-1].round()                    # think steps for token t, chosen before seeing it
+        steps[:, 1:] = ent[:, :-1]                            # think steps for token t, chosen before seeing it
         return {"logits": logits, "steps": steps, "flops": 2.0 * self.n_params() * (1 + steps)}
 
     def step(self, state, token):
@@ -126,13 +126,17 @@ def test_main_end_to_end_and_skip_done(tok_path, tmp_path, capsys):
     out = tmp_path / "bake"
     argv = ["--data", str(FIX), "--sha256", corpus_hash(FIX), "--tok", str(tok_path),
             "--arms", f"gpt=gpt,qf={TOY}", "--arm-kw", "gpt={\"layers\":1,\"max_seq\":33}",
-            "--seeds", "0,1", "--params", "34000", "--flops-budget", "3e9", "--seq", "32", "--batch", "4",
+            "--seeds", "0,1", "--params", "34000", "--macs-budget", "1.5e9", "--seq", "32", "--batch", "4",
             "--val-batches", "2", "--out", str(out)]
     run_lm.main(argv)
     rows = [json.loads(l) for l in (out / "results.jsonl").read_text().splitlines()]
     assert {(r["arm"], r["seed"]) for r in rows} == {("gpt", 0), ("gpt", 1), ("qf", 0), ("qf", 1)}
     for r in rows:                                                          # equal FLOPs: steps * fpt matches budget
-        assert r["steps"] * 3 * r["flops_per_token"] * 4 * 32 <= 3e9 < (r["steps"] + 1) * 3 * r["flops_per_token"] * 4 * 32
+        # Amendment 6: budget in MACs at the measured expected think steps; worst case reported beside
+        assert r["steps"] * 3 * r["macs_per_token"] * 4 * 32 <= 1.5e9 < (r["steps"] + 1) * 3 * r["macs_per_token"] * 4 * 32
+        assert r["macs_per_token_worst"] > 0 and r["val_macs_per_token"] > 0
+        if r["arm"] == "gpt":
+            assert r["macs_per_token"] == r["macs_per_token_worst"]
         assert abs(r["n_params"] / 34000 - 1) < 0.05
     crit = json.loads((out / "criteria.json").read_text())
     assert set(crit) >= {"a", "b", "c", "talks_ppl", "new"}
@@ -145,3 +149,26 @@ def test_hash_mismatch_exits_nonzero(tok_path, tmp_path):
         run_lm.main(["--data", str(FIX), "--sha256", "0" * 64, "--tok", str(tok_path), "--arms", "gpt=gpt",
                      "--out", str(tmp_path / "o")])
     assert e.value.code not in (0, None)
+
+
+class ToyDyn(ToyQF):
+    """QF-like stand-in exposing s_max/generate so cell() takes the telemetry branch."""
+    s_max = 2
+
+    def generate(self, *a, **k):
+        return None
+
+
+def test_cell_dynamics_branch():
+    """Detects cell() dropping the 'dynamics' key for s_max/generate models or adding it for plain ones."""
+    import pytest as _p
+    mp = _p.MonkeyPatch()
+    mp.setattr(run_lm.telemetry, "dynamics", lambda m, n_tokens, B, seed: {"seed": seed, "n": n_tokens})
+    try:
+        d = Path(__import__("tempfile").mkdtemp())
+        tp = d / "tok.json"; train_bpe(FIX, V, tp)
+        kw = dict(kw={}, d=16, data=FIX, tok=tp, seed=3, steps=2, seq=32, batch=4, lr=3e-3, val_batches=1)
+        assert run_lm.cell(core="test_run_lm:ToyDyn", ckpt=d / "a.pt", **kw)["dynamics"] == {"seed": 3, "n": 256}
+        assert "dynamics" not in run_lm.cell(core=TOY, ckpt=d / "b.pt", **kw)
+    finally:
+        mp.undo()

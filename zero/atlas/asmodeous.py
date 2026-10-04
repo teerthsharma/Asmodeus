@@ -234,13 +234,13 @@ class Asmodeous(nn.Module):
         else:
             ic = torch.arange(m).expand(n, m)
             wmix = pK.gather(1, cand) if mode == "one_pass" else vals.softmax(-1)
-            wstar, iters, res = None, 0, torch.zeros(n)
+            wstar, iters, res = None, 0, torch.zeros(n, dtype=pK.dtype, device=pK.device)
         zidx = cand.gather(1, ic)
         w = pK.gather(1, zidx)                                         # exact POVM prob, NOT renormalised
         zr, zhr = _take(z, ic), _take(zh, ic)
         glue = lambda zz: gate[:, None] * (wmix[..., None] * self._phi(zz, zidx)).sum(1)
         r3 = lambda t: t.reshape(B, T, *t.shape[1:])
-        return dict(g=r3(glue(zr)), ghat=r3(glue(zhr)), w=r3(torch.zeros(n, K).scatter(1, zidx, w)),
+        return dict(g=r3(glue(zr)), ghat=r3(glue(zhr)), w=r3(torch.zeros(n, K, dtype=pK.dtype, device=pK.device).scatter(1, zidx, w)),
                     gate=r3(gate[:, None]), psi=psi, zidx=r3(zidx), z=r3(zr), zh=r3(zhr), wmix=r3(wmix),
                     psi_hat=r3(_norm((wmix[..., None] * _take(y, ic)).sum(1))),
                     alpha=r3(alpha_all.gather(1, zidx)), pK=pK, cand=cand, wstar=wstar, cand3=r3(cand), wstar3=None if wstar is None else r3(wstar), ctc_iters=iters,

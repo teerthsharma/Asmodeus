@@ -151,3 +151,59 @@ def test_log_born_zero_amplitude():
     t = torch.full((8,), 1e-30, dtype=torch.complex64).requires_grad_()
     log_born(t).backward()
     assert torch.isfinite(t.grad).all()
+
+
+def test_renorm_psi_zero_vector_raises():
+    psi = torch.randn(3, 8, dtype=torch.complex64)
+    psi[1] = 0
+    with pytest.raises(ValueError, match="1"):
+        renorm_psi(psi)
+    tiny = torch.full((2, 8), 1e-30, dtype=torch.complex64)
+    out = renorm_psi(tiny)
+    assert torch.isfinite(out).all()
+    assert torch.allclose(torch.linalg.vector_norm(out, dim=-1), torch.ones(2), atol=1e-5)
+
+
+def test_renorm_psi_bad_flag_cpu():
+    psi = torch.randn(3, 8, dtype=torch.complex64)
+    psi[1] = 0
+    bad = torch.zeros(3, dtype=torch.bool)
+    out = renorm_psi(psi, bad=bad)
+    assert bad.tolist() == [False, True, False]
+    n = torch.linalg.vector_norm(out, dim=-1)
+    assert torch.allclose(n[[0, 2]], torch.ones(2), atol=1e-5)
+    assert not torch.isfinite(out[1]).all()
+    renorm_psi(torch.randn(3, 8, dtype=torch.complex64), bad=bad)
+    assert bad.tolist() == [False, True, False]  # OR-accumulate, never cleared
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")
+def test_renorm_psi_cuda_graph_capture_reports_zero_row():
+    dev = "cuda"
+    inp = torch.randn(4, 64, dtype=torch.complex64, device=dev)
+    bad = torch.zeros(4, dtype=torch.bool, device=dev)
+    s = torch.cuda.Stream()
+    s.wait_stream(torch.cuda.current_stream())
+    with torch.cuda.stream(s):
+        for _ in range(3):
+            renorm_psi(inp, bad=bad)
+            renorm_psi(inp)
+    torch.cuda.current_stream().wait_stream(s)
+    g1, g2 = torch.cuda.CUDAGraph(), torch.cuda.CUDAGraph()
+    with torch.cuda.graph(g1):
+        out1 = renorm_psi(inp, bad=bad)
+    with torch.cuda.graph(g2):
+        out2 = renorm_psi(inp)
+    x = torch.randn(4, 64, dtype=torch.complex64, device=dev)
+    x[2] = 0
+    inp.copy_(x)
+    bad.zero_()
+    g1.replay()
+    g2.replay()
+    torch.cuda.synchronize()
+    assert bad.tolist() == [False, False, True, False]
+    for out in (out1, out2):
+        n = torch.linalg.vector_norm(out, dim=-1)
+        assert torch.allclose(n[[0, 1, 3]], torch.ones(3, device=dev), atol=1e-5)
+        assert not torch.isfinite(out[2]).all()
+    assert torch.isfinite(out2).all(-1).tolist() == [True, True, False, True]

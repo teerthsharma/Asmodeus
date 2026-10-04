@@ -3,7 +3,7 @@ import argparse
 
 import torch
 
-from qflm.generate import ContextStepper, generate
+from qflm.generate import ContextStepper, QFLMStepper, generate
 
 
 class ByteTok:
@@ -55,6 +55,8 @@ def load(path):
     m = build(ck["core"], ck["vocab"], ck["d"], **ck.get("kw", {}))
     m.load_state_dict(ck["state_dict"])
     m.eval()
+    if hasattr(m, "_emit"):  # QFLM: batched-tensor API, wrap into the scalar protocol
+        return QFLMStepper(m)
     return m if all(hasattr(m, a) for a in ("reset", "dist", "observe")) else ContextStepper(m)
 
 

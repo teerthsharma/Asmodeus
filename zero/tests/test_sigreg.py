@@ -141,14 +141,14 @@ CHART_AE_RANK = pytest.mark.xfail(strict=True, reason=(
     "learning failure of the sigmoid-chart design, not collapse; Cameron's arm, flagged. strict: a pass is news"))
 
 
-@pytest.mark.parametrize("name", ["single", "mop", "chart_ae", "lazy_chart_ae",
-                                  "peer", "atlas"])
-def test_scale_contract_every_arm_same_lambda(name):
+@pytest.mark.parametrize("name,seed", [("single", 0), ("mop", 0), ("chart_ae", 0), ("chart_ae", 1), ("chart_ae", 2),
+                                       ("lazy_chart_ae", 0), ("peer", 0), ("atlas", 0)])
+def test_scale_contract_every_arm_same_lambda(name, seed):
     import beds
     bed = beds.make_bed("s2", 256, 16, seed=0)
     obs, act, n = torch.from_numpy(bed["obs"]), torch.from_numpy(bed["act"]), bed["meta"]["n"]
     build, regularised = _arms(obs.shape[-1], act.shape[-1])[name]
-    torch.manual_seed(0)
+    torch.manual_seed(seed)
     model = build().train()
     assert getattr(model, "lam", LAM) == LAM  # one lambda table for every arm (fairness)
     if name in ("lazy_chart_ae", "atlas"):  # same Switch load balance (MoP's lam_bal is the paper's own term)

@@ -1,5 +1,9 @@
 """QF-LM sampling: next token = measurement outcome over V tokens + NULL ("still thinking")."""
+import math
 import torch
+
+from . import EPS, luders_update, think_step
+from .model import TAU
 
 NULL = -1
 
@@ -79,3 +83,57 @@ def generate(stepper, prompt_ids, max_new=64, *, think_budget=4, stop_ids=(), se
         if o in stop_ids:
             break
     return {"ids": out, "think_steps": thinks_log}
+
+
+class QFLMStepper:
+    """Scalar-protocol adapter (B=1) over QFLM. Emission/ingest go through QFLM._emit (single loop);
+    sampling walks the null path round by round, forcing emission by the same rule as _emit."""
+
+    def __init__(self, model):
+        self.m = model
+
+    def _null(self, psi):
+        m = self.m
+        return luders_update(psi, torch.tensor([m.V]), m.M(), m.theta, m.phi)
+
+    def _think(self, psi):
+        return think_step(psi, self.m._tp())
+
+    @torch.no_grad()
+    def reset(self, prompt_ids):
+        self.psi = self.m.psi0()[None]
+        for x in prompt_ids:
+            self._ingest(int(x))
+        self.psi_s, self.s, self.logP = self.psi, 0, 0.0
+
+    def _ingest(self, x):
+        self.psi = self.m._emit(self.psi)[2](torch.tensor([x]))[1]
+
+    def _forced(self):  # _emit's rule: s == s_max, or P(null^s) < TAU
+        return self.s >= self.m.s_max or math.exp(self.logP) < TAU
+
+    @torch.no_grad()
+    def dist(self):
+        V = self.m.V
+        p = self.m._p(self.psi_s)
+        if self._forced():
+            return p[0, :V] / (1 - p[0, V]).clamp_min(EPS), 0.0
+        return p[0, :V], float(p[0, V])
+
+    @torch.no_grad()
+    def observe(self, outcome):
+        if outcome == NULL:
+            if self._forced():
+                raise RuntimeError("null observed where emission is forced")
+            self.logP += float(self.m._p(self.psi_s)[0, self.m.V].clamp_min(1e-30).log())
+            self.psi_s, self.s = self._think(self._null(self.psi_s)), self.s + 1
+        else:
+            self.psi = self.m._post(self.psi_s, torch.tensor([int(outcome)]))
+            self.psi_s, self.s, self.logP = self.psi, 0, 0.0
+
+    @torch.no_grad()
+    def marginal(self):
+        """Exact marginal over null records; only defined at a token boundary (s == 0)."""
+        if self.s:
+            raise RuntimeError("marginal() only valid at s == 0")
+        return self.m._emit(self.psi_s)[0][0]

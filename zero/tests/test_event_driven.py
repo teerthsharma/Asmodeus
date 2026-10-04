@@ -10,6 +10,7 @@ import torch
 torch.set_num_threads(4)
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from atlas.event_driven import EventDriven  # noqa: E402
+from atlas.asmodeous import Asmodeous  # noqa: E402
 from atlas.observer_atlas import ObserverAtlas  # noqa: E402
 from atlas.phase_sphere import PhaseSphere  # noqa: E402
 
@@ -17,7 +18,7 @@ D, A, B, T = 16, 2, 3, 6
 ARMS = {
     "observer": lambda: ObserverAtlas(D=D, A=A, K=4, m=2, d_c=2, D_g=6, d_h=16, d_key=8, hidden=8),
     "phase": lambda: PhaseSphere(D=D, A=A, K=4, m=2, N=4, d_c=2, D_g=6, hidden=8),
-    # asmodeous case: add when atlas/asmodeous.py lands
+    "asmodeous": lambda: Asmodeous(D=D, A=A, K=8, m=2, N=8, d_c=2, D_g=6, hidden=16),
 }
 kinds = pytest.mark.parametrize("kind", list(ARMS))
 

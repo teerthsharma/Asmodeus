@@ -81,3 +81,25 @@ def test_token_stream_split_shapes_determinism_resume(tmp_path):
     held_stories = {d.split("The end of story ")[-1] for d in docs() if split_of(d) == "val"}
     nums = [w.rstrip(".") for w in val_text.split("story ")[1:]]
     assert all(n.split()[0].rstrip(".") in {h.rstrip(".") for h in held_stories} for n in nums if n)
+
+
+def test_two_vocab_tokenizers_same_split_keyed_and_pinned(tmp_path):
+    """Amendment 6: |V|=1024 (bake-off) and 4096 (Kaggle) from one split, keyed by size, hash-pinned."""
+    import json
+    from beds.lang import build_tokenizers, load_tokenizer
+    man = build_tokenizers(FIX, tmp_path, sizes=(300, 400))
+    assert man == json.loads((tmp_path / "manifest.json").read_text())
+    assert man["corpus_sha256"] == corpus_hash(FIX) and man["split"] == {"salt": "lang-v1", "fractions": [0.9, 0.05, 0.05]}
+    assert set(man["tokenizers"]) == {"300", "400"} and man["tokenizers"]["300"]["sha256"] != man["tokenizers"]["400"]["sha256"]
+    for v in (300, 400):
+        assert load_tokenizer(tmp_path / "manifest.json", v, data=FIX).get_vocab_size() == v
+    with pytest.raises(KeyError):
+        load_tokenizer(tmp_path / "manifest.json", 1024, data=FIX)
+    other = tmp_path / "other.txt"
+    other.write_bytes(FIX.read_bytes() + b"x")
+    with pytest.raises(ValueError):
+        load_tokenizer(tmp_path / "manifest.json", 300, data=other)               # corpus drifted
+    f = tmp_path / man["tokenizers"]["400"]["file"]
+    f.write_bytes(f.read_bytes() + b" ")
+    with pytest.raises(ValueError):
+        load_tokenizer(tmp_path / "manifest.json", 400, data=FIX)                 # tokenizer file tampered
