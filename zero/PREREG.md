@@ -2001,3 +2001,12 @@ B = 1 every step pays the Δ check plus a host-visible branch.
   integrate them. This matters on swing-up, where actions are dense.
 - Per-chart triggers (chart k recomputes only when its own input deviates) are deferred. Whole-step
   triggers come first, because they are arm-agnostic.
+
+## Amendment 1 (pre-result)
+Talk-rubric rules for PLAN item 5 (Adams, `zero/plans/adams.md` step 1). Filed 2026-10-04, before any QF-LM or GPT checkpoint exists. It closes the open cell "PLAN item 5: rubric definition / tie criterion".
+- **Frozen sheet.** `zero/ref/prompts_50.json`, 50 prompts. sha256 `ff9a955c3a864d7fa9b4daca3bbae308b524fddffe65c7182986d892de264c7e`, computed over `json.dumps(prompts, ensure_ascii=False)`. This is the rule in `eval_talk.py:21` and the sheet's own "note" field; verified by Wilson. It is not the file's byte hash, which depends on line endings.
+- **Tie.** Five samples per prompt per model. The 90% prompt-bootstrap confidence interval of the win rate must lie inside [0.40, 0.60]. This must hold on every one of the 3 seeds.
+- **Rater agreement.** The rubric counts only if Krippendorff α ≥ 0.667.
+- **Null control.** GPT vs GPT with a different seed must tie under the same rule. Otherwise the rule is void.
+- **Reported:** rater side-guessing (can raters tell which model wrote a sample) and train-text overlap of the samples.
+- **Wording.** No "talks like a person" wording in any verdict or report.

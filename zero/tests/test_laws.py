@@ -97,6 +97,34 @@ def test_prereg_before_runs():
 POST_HOC = re.compile(r"\s*#+ [^\n]*post-hoc", re.I)
 
 
+AMENDMENT = re.compile(r"\s*## Amendment (\d+) \(pre-result\)[^\n]*$", re.M)
+
+
+def append_ok(tail, results_exist):
+    """An append to PREREG.md is either a post-hoc section, or numbered pre-result amendments (1, 2, ...)
+    filed while no result file exists, each as its own '## Amendment N (pre-result)' section."""
+    if not tail.strip():
+        return True
+    if not AMENDMENT.match(tail):
+        return bool(POST_HOC.match(tail))
+    nums = [int(m.group(1)) for m in AMENDMENT.finditer(tail)]
+    if results_exist or nums != list(range(1, len(nums) + 1)):
+        return False
+    blocks = re.split(r"(?m)^(?=## )", tail.lstrip())
+    return all(AMENDMENT.match(b) or POST_HOC.match(b) for b in blocks if b.strip())
+
+
+def test_append_ok_rules():
+    assert append_ok("", False)
+    assert append_ok("\n## Amendment 1 (pre-result)\nx\n", False)
+    assert append_ok("\n## Amendment 1 (pre-result)\nx\n## Amendment 2 (pre-result)\ny\n", False)
+    assert not append_ok("\n## Amendment 1 (pre-result)\nx\n", True)          # after results: post-hoc only
+    assert not append_ok("\n## Amendment 2 (pre-result)\nx\n", False)         # numbering starts at 1
+    assert not append_ok("\n## Notes\nx\n", False)
+    assert append_ok("\n## Post-hoc analysis\nx\n", True)
+    assert not append_ok("\n## Amendment 1 (pre-result)\nx\n## Notes\ny\n", False)
+
+
 def test_prereg_read_only():
     """L-AUDIT: once committed, PREREG.md only grows by an appended section headed '... post-hoc ...'."""
     path = f"{REL}/PREREG.md"
@@ -113,7 +141,10 @@ def test_prereg_read_only():
         assert v.returncode == 0, f"PREREG.md deleted at {name}"
         txt = v.stdout.replace("\r\n", "\n")
         assert txt.startswith(base), f"PREREG.md committed text modified at {name}"
-        assert txt == base or POST_HOC.match(txt[len(base):]), f"PREREG.md append at {name} not under a post-hoc heading"
+        runs = (git("ls-tree", "-r", "--name-only", name, f"{REL}/runs").stdout.strip() if name != "worktree"
+                else git("ls-files", f"{REL}/runs").stdout.strip())
+        assert append_ok(txt[len(base):], bool(runs)), (
+            f"PREREG.md append at {name} is neither post-hoc nor a numbered pre-result amendment filed before results")
 
 
 # ---- (d) L-SHA ----------------------------------------------------------------------------------
