@@ -1,0 +1,65 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathmorphing}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+
+% One accent colour means "selected / active / observed". Grey means everything else.
+\definecolor{accent}{HTML}{D97706}
+\definecolor{quiet}{gray}{0.5}
+
+% ---- notation ----
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\CP}{\mathbb{CP}}
+\newcommand{\RP}{\mathbb{RP}}
+\newcommand{\Zt}{\mathbb{Z}_2}
+\DeclareMathOperator{\softmax}{softmax}
+\newcommand{\topm}[1]{\text{top-}#1}
+\DeclareMathOperator{\cat}{cat}
+\DeclareMathOperator{\atlas}{atlas}
+\DeclareMathOperator{\Cayley}{Cayley}
+\newcommand{\ket}[1]{\lvert #1\rangle}
+\newcommand{\bra}[1]{\langle #1\rvert}
+\newcommand{\braket}[2]{\langle #1\vert #2\rangle}
+\newcommand{\norm}[1]{\lVert #1\rVert}
+
+\newtheorem{proposition}{Proposition}
+
+% title glyph: ०   (U+0966 DEVANAGARI DIGIT ZERO; pdflatex without a Devanagari font fails on it)
+\title{Asmodeous (zero): An Atlas of Tiny Predictive Charts Made Real by an Observer}
+\author{Teerth Sharma\\ \texttt{teerths57@gmail.com}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\input{sections/abstract}
+\end{abstract}
+
+\noindent\textbf{Keywords:} observer, atlas of charts, partition of unity, lazy computation, Born rule, POVM, Chern number, holonomy, closed timelike curve, event-driven computation, JEPA.
+
+\input{sections/intro}
+\input{sections/asmodeous}
+\input{sections/background}
+\input{sections/maths}
+\input{sections/method}
+\input{sections/identities}
+\input{sections/experiments}
+\input{sections/results}
+\input{sections/verdict}
+\input{sections/conclusion}
+
+\bibliographystyle{plain}
+\bibliography{refs}
+
+\end{document}

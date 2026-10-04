@@ -1,0 +1,128 @@
+\section{Mathematical foundation}\label{sec:maths}
+
+Every object below is implemented in the \texttt{atlas/} package of the accompanying code, and every identity is checked by a reference script and the test suite (Section~\ref{sec:identities}).
+
+\subsection{Superposition, then a measurement that breaks linearity}
+
+A state is a unit vector $\psi$ expanded in a basis $\{u_k\}$. Evolution is linear. The \emph{decider} is the Born rule, the one non-linear step:
+\begin{align}
+  \ket{\psi} &= \sum_k \alpha_k\,\ket{u_k}, \qquad \alpha_k=\braket{u_k}{\psi}, \label{eq:superposition}\\
+  p_k &= \frac{\lvert\alpha_k\rvert^2}{\sum_j\lvert\alpha_j\rvert^2} = \softmax\big(2\log\lvert\alpha_k\rvert\big)_k. \label{eq:born}
+\end{align}
+Here $\alpha_k$ is the amplitude of $\psi$ along the chart gauge $u_k$ and $p_k$ is the probability of observing chart $k$.
+
+\begin{proposition}[Born is a softmax over log-magnitudes]\label{prop:born}
+For amplitudes $\alpha_k\neq 0$, $\lvert\alpha_k\rvert^2/\sum_j\lvert\alpha_j\rvert^2=\softmax(2\log\lvert\alpha_k\rvert)_k$.
+\end{proposition}
+\begin{proof}
+$\lvert\alpha_k\rvert^2=\exp(2\log\lvert\alpha_k\rvert)$, and a softmax is the exponential normalised by its sum.
+\end{proof}
+
+The second line of~\eqref{eq:born} is therefore an exact identity. Softmax attention is a classical observer; the Born rule is its coherent form, and the two meet at one formula.
+
+\subsection{Measurement as a POVM}
+
+A measurement that can be rotated, and therefore learned, is a positive operator-valued measure:
+\begin{equation}\label{eq:povm}
+  E_k=U^\dagger \Pi_k\, U,\qquad \Pi_k=\ket{k}\bra{k},\qquad \sum_k E_k=U^\dagger\Big(\sum_k\Pi_k\Big)U=I,\qquad E_k\succeq 0,
+\end{equation}
+where $U$ is a unitary with learnable parameters, $\Pi_k$ is the fixed projector onto basis state $k$, and $E_k$ is the effect that selects outcome $k$. Completeness $\sum_k E_k=I$ holds for every value of the parameters, so the measurement stays valid while it learns, and $p_k=\langle\psi|E_k|\psi\rangle$. The unitary is parametrised by a Cayley transform of a skew-Hermitian generator $X$, $U=\Cayley(X-X^\dagger)$, which is unitary for every $X$.
+
+\subsection{The softmax observer is a partition of unity; charts glue into \texorpdfstring{$\R^{D_g}$}{R\^{}Dg}}
+
+The observer scores every chart against a query and normalises:
+\begin{equation}\label{eq:pou}
+  w_k(x)=\softmax_k\!\left(\frac{q(x)\cdot\kappa_k}{\sqrt d}\right),\qquad w_k(x)\ge 0,\qquad \sum_k w_k(x)=1,
+\end{equation}
+where $q(x)$ is the query computed from the context at input $x$, $\kappa_k$ is the learned key of chart $k$, and $d$ is the key width. The weights sum to one at every input, which is the definition of a partition of unity subordinate to the cover by chart domains. Keep the heaviest $m$ charts $S=\topm{m}(w)$ and renormalise. Chart $k$ encodes the observation into its own small coordinates $z_k=E_k(o)\in\R^{d_c}$, and a gluing map $\phi_k:\R^{d_c}\to\R^{D_g}$ with $D_g>d_c$ places it in the shared space:
+\begin{equation}\label{eq:glue}
+  g=\gamma\sum_{k\in S}\tilde w_k\,\phi_k(z_k),\qquad \tilde w_k=\frac{w_k}{\sum_{j\in S}w_j},
+\end{equation}
+where $\gamma\in[0,1]$ is a learned gate that lets the observer observe nothing (a causal softmax with no gate collapses onto a single token; see Section~\ref{sec:identities}), and $g$ is the glued latent. Predictions glue the same way:
+\begin{equation}\label{eq:predglue}
+  \hat g_{t+1}=\gamma\sum_{k\in S}\tilde w_k\,\phi_k\big(P_k(z_k,a_t)\big),
+\end{equation}
+with $P_k$ the tiny predictor of chart $k$ and $a_t$ the action. Figure~\ref{fig:glue} shows the construction and the nerve that results.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/glue_nerve}
+\end{figure}
+
+\subsection{The lazy rule: observed \texorpdfstring{$\Rightarrow$}{implies} exists}
+
+Only the charts in $S$ run their encoder and predictor. Unselected charts are never read. The cost of a step is routing plus $m$ tiny charts:
+\begin{equation}\label{eq:cost}
+  C_{\text{step}}=C_{\text{route}}+m\,C_{\text{chart}},\qquad C_{\text{route}}=O(K\,d)\ \text{(flat keys)}\quad\text{or}\quad O(\sqrt K\,d)\ \text{(product keys)},
+\end{equation}
+where $K$ is the number of charts, $m\ll K$ the number observed, and $C_{\text{chart}}$ the cost of one tiny JEPA. The dense reference costs $K\,C_{\text{chart}}$. Parameters grow with $K$, compute does not. The lazy top-$m$ computation is checked against the dense mixture that zeroes the same weights (parity), and the unselected charts are checked to cost nothing (Section~\ref{sec:identities}).
+
+\subsection{How many charts does a manifold need?}
+
+No single chart covers a closed manifold without tearing (invariance of domain). With $\cat$ the Lusternik--Schnirelmann category and $\atlas(M)$ the least number of ball charts that cover $M$~\cite{rudyak2006atlas},
+\begin{equation}\label{eq:atlasbound}
+  \cat(M)+1\;\le\;\atlas(M)\;\le\;n+1,\qquad n=\dim M.
+\end{equation}
+By these bounds the sphere $S^n$ needs $2$ charts, the torus $T^2$ and the Klein bottle need $3$, and $SO(3)\cong\RP^3$ needs $4$. The atlas stops tearing at $K=\atlas(M)$, and not before. A rotation in $SO(3)$ has no continuous representation in four Euclidean dimensions or fewer, while five or six suffice~\cite{zhou2019rotation}, which is why the charts are glued into a space of higher dimension than their own.
+
+\subsection{The nerve of the observer and its Betti numbers}
+
+Charts that are read together form a simplicial complex. For a threshold $\tau$,
+\begin{align}
+  N_\tau&=\Big\{\sigma=\{k_0,\dots,k_r\}\;:\;\exists\,x\ \text{with}\ w_{k_i}(x)\ge\tau\ \ \forall i\Big\}, \label{eq:nerve}\\
+  \beta_j&=\dim_{\Zt}H_j\big(N_\tau;\Zt\big). \label{eq:betti}
+\end{align}
+Here the vertices are the charts, a simplex is a set of charts co-selected with weight at least $\tau$ on some input, and $\beta_j$ is the $j$-th Betti number over $\Zt$. By the nerve theorem a good cover has the homotopy type of its nerve, so the learned topology can be read from the observer while the model runs, in contrast to a post-hoc cover-and-nerve summary~\cite{singh2007mapper}. Over $\Zt$ the targets are $S^2:(1,0,1)$, $T^2:(1,2,1)$ and $\RP^3:(1,1,1,1)$. A partition of unity places at most $\lfloor 1/\tau\rfloor$ charts above $\tau$, and a top-$m$ nerve has dimension at most $m-1$; both bounds are properties of the readout and are accounted for in its design.
+
+\subsection{The phase sphere: amplitudes, transition phases, Chern number, holonomy}
+
+The origin notes read ``jepa as a phase over higher dimensional $S^2$ sphere; small phases all around the sphere; the decider will be a softmax''. In this reading the state is a point of projective Hilbert space, $\psi\in\CP^{N-1}$ (the Bloch sphere $\CP^1=S^2$ is the first case), and the small phases are the $U(1)$ fibre. Each chart is a local gauge:
+\begin{equation}\label{eq:gauge}
+  \alpha_k=\braket{u_k}{\psi},\qquad z_k=V_k^{\dagger}\psi\,e^{-i\arg\alpha_k},\qquad \hat z_k=\Cayley\big(X_k(a)-X_k(a)^{\dagger}\big)\,z_k,
+\end{equation}
+where $u_k\in\C^N$ is the learned gauge of chart $k$, $V_k$ a learned frame, the factor $e^{-i\arg\alpha_k}$ fixes the gauge so that $g$ does not depend on the global phase of $\psi$, and $\hat z_k$ is the local unitary step driven by the action $a$ (a Cayley transform of a skew-Hermitian generator is unitary). Neighbouring gauges differ by a \emph{transition phase}:
+\begin{equation}\label{eq:transphase}
+  \chi_{jk}=\arg\big(\alpha_j\,\overline{\alpha_k}\big).
+\end{equation}
+The topological readout is an integer. For a triangulated sphere of states, take the link variables $U_{ab}=\braket{\psi_a}{\psi_b}/\lvert\braket{\psi_a}{\psi_b}\rvert$ and the plaquette field strength $F_\square=\arg\!\big(U_{12}U_{23}U_{31}\big)$ on the principal branch. The lattice \emph{Chern number} of Fukui, Hatsugai and Suzuki~\cite{fhs2005} is
+\begin{equation}\label{eq:chern}
+  c_1=\frac{1}{2\pi}\sum_{\square}F_\square,
+\end{equation}
+where the sum runs over the oriented triangles of the lattice and $c_1\in\mathbb Z$ up to an orientation convention. Its magnitude is $1$ for the Hopf bundle $S^3\to S^2$, the spin-$\tfrac12$ monopole, and $0$ for a trivial bundle. Along a closed path the same links give the \emph{Berry phase}, the holonomy of the state:
+\begin{equation}\label{eq:berry}
+  \gamma(C)=-\arg\prod_j\braket{\psi_j}{\psi_{j+1}},\qquad \gamma=-\tfrac12\,\Omega\ \ \text{(spin-$\tfrac12$)},
+\end{equation}
+where $C$ is the closed loop of states and $\Omega$ is the solid angle the loop encloses on the sphere. A transported frame returns with a sign $\pm1$ around the non-orientable loop of a Klein bottle and with sign $+1$ around every loop of a torus, so the holonomy sign separates the two surfaces at the level of individual loops.
+
+\subsection{The closed loop: the observer as a fixed point}
+
+The loop in the origin notes, the observer's closed timelike curve, is a self-consistency condition (Deutsch's condition $x=F(x)$~\cite{deutsch1991ctc}):
+\begin{equation}\label{eq:fixedpoint}
+  w^\star=D\big(P_h(z,\,w^\star)\big),\qquad w^{(i+1)}=D\big(P_h(z,\,w^{(i)})\big),\qquad \text{halt when } \norm{w^{(i+1)}-w^{(i)}}<\varepsilon,
+\end{equation}
+where $z$ is the current state, $w$ the observer's choice of charts, $P_h(z,w)$ the predicted state $h$ steps ahead when the charts $w$ are read, and $D$ the decider that maps a predicted future to a choice. The observer's choice must equal the choice it would make after seeing the future that choice causes. A continuous map of the simplex into itself always has a fixed point (Brouwer), so the loop always has an answer and there is no paradox. The G\"odel figure of the origin shows the same shape: the halting answer returns to the axis \emph{before} the start event (Figure~\ref{fig:ctc}). An \emph{amortised head} learns $\hat w(z)\approx w^\star(z)$ in one shot (trained by a KL divergence to the converged $w^\star$), so the answer exists before the iteration that defines it runs.
+
+\subsection{The butterfly bonded by topology}
+
+The continuous state may be chaotic while the integer readout stays put. With $J_t$ the Jacobian of the latent rollout at step $t$,
+\begin{equation}\label{eq:lyapunov}
+  \lambda_1=\frac1h\log\Big\lVert\prod_{t=1}^{h}J_t\Big\rVert
+\end{equation}
+is the finite-time largest Lyapunov exponent over the horizon $h$. The claim is that $\lambda_1>0$ (the continuous dynamics is sensitive) while the discrete readouts ($c_1$, the holonomy class, the Betti vector) cannot change under small perturbations unless a gap closes. The butterfly is bonded by topology.
+
+\subsection{Event-driven time laziness (A.E.T.H.E.R.)}
+
+The A.E.T.H.E.R.\ event-driven architecture renders a frame only when the scene has changed enough. With $\mu(t)\in\R^d$ the scene-feature vector, the deviation and the trigger rule are
+\begin{equation}\label{eq:aether}
+  \Delta(t)=\big\lVert\mu(t)-\mu(t-\delta t)\big\rVert_2,\qquad \text{fire iff }\ \Delta(t)\ge\epsilon,
+\end{equation}
+and the effective rate and the number of frames over a duration $T$ are
+\begin{equation}\label{eq:fps}
+  \mathrm{FPS}(t)\approx\frac{\lVert\dot\mu(t)\rVert}{\epsilon(t)},\qquad N_f=\int_0^T\mathrm{FPS}(t)\,dt\approx\int_0^T\frac{\lVert\dot\mu(t)\rVert}{\epsilon(t)}\,dt,
+\end{equation}
+where $\epsilon(t)$ is a threshold that the controller adapts, so the system raises it in noise and lowers it when motion matters. The same architecture defines the adaptive measurement as a POVM $E_k(\Phi)=U^\dagger(\Phi)\,\Pi_k\,U(\Phi)$ with $\sum_k E_k=I$ for every parameter $\Phi$, which is exactly the measurement of Equation~\eqref{eq:povm}. The two laziness axes compose: space decides \emph{which charts} run (Equation~\eqref{eq:cost}) and time decides \emph{at which instants} anything runs at all (Figure~\ref{fig:event}).
+
+\begin{figure}[t]
+  \centering
+  \input{figures/event_time}
+\end{figure}

@@ -1,0 +1,13 @@
+.venv*/
+# private slugs (L-Security: Kaggle token stays local)
+kaggle.json
+*.token
+.env
+.env.*
+secrets*
+*.ckpt
+*.pt
+data/
+datasets/
+kaggle/out/
+kaggle/private.json

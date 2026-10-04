@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 780 330" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ASMODEOUS: one step, slot by slot">
+  <defs>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#888"/></marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0ea5e9"/></marker>
+  </defs>
+  <style>text{font-family:sans-serif;fill:#888}.t{font-size:13px;font-weight:bold}.s{font-size:11px}.a{fill:#d97706}.o{fill:#0ea5e9}</style>
+
+  <!-- 1 event gate -->
+  <rect x="10" y="120" width="88" height="60" rx="8" fill="none" stroke="#888" stroke-width="1.5"/>
+  <text x="54" y="143" text-anchor="middle" class="t">event</text>
+  <text x="54" y="160" text-anchor="middle" class="s">fire iff Δ ≥ ε</text>
+  <text x="54" y="173" text-anchor="middle" class="s">(else hold)</text>
+  <line x1="99" y1="150" x2="124" y2="150" stroke="#888" stroke-width="1.5" marker-end="url(#g)"/>
+
+  <!-- 2 state on CP^{N-1} -->
+  <circle cx="165" cy="150" r="38" fill="none" stroke="#888" stroke-width="1.5"/>
+  <ellipse cx="165" cy="150" rx="38" ry="11" fill="none" stroke="#888" stroke-width="1" stroke-dasharray="3 3"/>
+  <circle cx="183" cy="128" r="5" fill="#0ea5e9"/>
+  <text x="165" y="207" text-anchor="middle" class="t">ψ ∈ ℂℙ<tspan baseline-shift="super" font-size="9">N−1</tspan></text>
+  <text x="165" y="222" text-anchor="middle" class="s">state carries phase</text>
+  <line x1="204" y1="150" x2="232" y2="150" stroke="#888" stroke-width="1.5" marker-end="url(#g)"/>
+
+  <!-- 3 decider: Parseval-frame POVM -->
+  <rect x="236" y="96" width="130" height="108" rx="8" fill="none" stroke="#0ea5e9" stroke-width="2"/>
+  <text x="301" y="116" text-anchor="middle" class="t o">observer</text>
+  <text x="301" y="132" text-anchor="middle" class="s">POVM rows of V, V†V = I</text>
+  <g>
+    <rect x="248" y="172" width="10" height="20" fill="#888" fill-opacity="0.45"/>
+    <rect x="262" y="146" width="10" height="46" fill="#d97706"/>
+    <rect x="276" y="180" width="10" height="12" fill="#888" fill-opacity="0.45"/>
+    <rect x="290" y="155" width="10" height="37" fill="#d97706"/>
+    <rect x="304" y="184" width="10" height="8" fill="#888" fill-opacity="0.45"/>
+    <rect x="318" y="178" width="10" height="14" fill="#888" fill-opacity="0.45"/>
+    <rect x="340" y="176" width="14" height="16" fill="none" stroke="#888" stroke-dasharray="2 2"/>
+  </g>
+  <text x="347" y="170" text-anchor="middle" class="s">∅</text>
+  <text x="301" y="222" text-anchor="middle" class="s">Σp = 1 exactly</text>
+  <text x="301" y="236" text-anchor="middle" class="s">∅ = observe nothing</text>
+  <line x1="367" y1="150" x2="388" y2="150" stroke="#d97706" stroke-width="2" marker-end="url(#g)"/>
+
+  <!-- 4 read charts + unitary step -->
+  <rect x="390" y="100" width="76" height="42" rx="6" fill="#d97706" fill-opacity="0.2" stroke="#d97706" stroke-width="2"/>
+  <rect x="390" y="158" width="76" height="42" rx="6" fill="#d97706" fill-opacity="0.2" stroke="#d97706" stroke-width="2"/>
+  <text x="428" y="118" text-anchor="middle" class="s a">z<tspan baseline-shift="sub" font-size="8">j</tspan> = V<tspan baseline-shift="sub" font-size="8">j</tspan>†ψ e<tspan baseline-shift="super" font-size="8">−iθ</tspan></text>
+  <text x="428" y="134" text-anchor="middle" class="s a">Cayley step</text>
+  <text x="428" y="176" text-anchor="middle" class="s a">z<tspan baseline-shift="sub" font-size="8">k</tspan> = V<tspan baseline-shift="sub" font-size="8">k</tspan>†ψ e<tspan baseline-shift="super" font-size="8">−iθ</tspan></text>
+  <text x="428" y="192" text-anchor="middle" class="s a">Cayley step</text>
+  <text x="428" y="222" text-anchor="middle" class="s">only read charts exist</text>
+  <!-- gauge link -->
+  <path d="M468,121 C490,128 490,172 468,179" fill="none" stroke="#0ea5e9" stroke-width="2" marker-end="url(#b)"/>
+  <text x="502" y="154" text-anchor="middle" class="s o">G<tspan baseline-shift="sub" font-size="8">jk</tspan></text>
+  <text x="470" y="240" text-anchor="middle" class="s">G<tspan baseline-shift="sub" font-size="8">jk</tspan>: gauge link ∈ U(d<tspan baseline-shift="sub" font-size="8">c</tspan>)</text>
+  <line x1="512" y1="150" x2="540" y2="150" stroke="#888" stroke-width="1.5" marker-end="url(#g)"/>
+
+  <!-- 5 glue + readouts -->
+  <rect x="544" y="96" width="114" height="108" rx="8" fill="none" stroke="#888" stroke-width="1.5"/>
+  <text x="601" y="118" text-anchor="middle" class="t">glue + read</text>
+  <text x="601" y="138" text-anchor="middle" class="s">g = γ Σ w<tspan baseline-shift="sub" font-size="8">k</tspan> φ<tspan baseline-shift="sub" font-size="8">k</tspan>(z<tspan baseline-shift="sub" font-size="8">k</tspan>)</text>
+  <text x="601" y="158" text-anchor="middle" class="s">nerve Betti (ℤ₂)</text>
+  <text x="601" y="174" text-anchor="middle" class="s">Chern c₁ from ψ</text>
+  <text x="601" y="190" text-anchor="middle" class="s">det Π G = holonomy</text>
+  <line x1="659" y1="150" x2="690" y2="150" stroke="#888" stroke-width="1.5" marker-end="url(#g)"/>
+  <text x="730" y="146" text-anchor="middle" class="t">ψ̂<tspan baseline-shift="sub" font-size="9">t+1</tspan></text>
+  <text x="730" y="162" text-anchor="middle" class="s">fidelity loss</text>
+
+  <!-- 6 CTC loop over the observer -->
+  <path d="M601,95 C601,62 301,62 301,92" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#b)"/>
+  <text x="451" y="24" text-anchor="middle" class="s o">time-traveller: w* = (1−ε) D(P<tspan baseline-shift="sub" font-size="8">h</tspan>(z, w*)) + ε/M, a contraction</text>
+  <text x="451" y="40" text-anchor="middle" class="s">an amortised head answers before the loop runs (halt before start)</text>
+
+  <text x="390" y="290" text-anchor="middle" class="s">amber = read this step · blue = the observer and its loop · grey = everything that costs nothing until called</text>
+  <text x="390" y="312" text-anchor="middle" class="s">PHASE-SPHERE gives the state, the charts and the readouts; OBSERVER-ATLAS gives laziness and gluing; A.E.T.H.E.R. gives the POVM and the clock</text>
+</svg>

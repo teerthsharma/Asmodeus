@@ -1,0 +1,25 @@
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[font=\small, >={Stealth[length=2mm]},
+  box/.style={draw=quiet, rounded corners=3pt, minimum height=1.3cm, align=center},
+  obs/.style={draw=cyan!70!blue, thick, rounded corners=3pt, minimum height=1.6cm, align=center},
+  read/.style={draw=accent, thick, fill=accent!18, rounded corners=3pt, inner xsep=7pt, minimum width=1.9cm, minimum height=0.7cm, align=center}]
+  \node[box, minimum width=1.5cm] (ev) at (0,0) {event\\[-1pt]\scriptsize fire iff $\Delta\ge\epsilon$};
+  \node[circle, draw=quiet, minimum size=1.3cm] (psi) at (2.3,0) {};
+  \fill[cyan!70!blue] ($(psi.center)+(0.3,0.3)$) circle (2pt);
+  \node[below=0pt of psi, text=quiet] {$\psi\in\CP^{N-1}$};
+  \node[obs, minimum width=2.4cm] (dec) at (5.0,0) {\textcolor{cyan!70!blue}{\textbf{observer}}\\[-1pt]\scriptsize POVM rows, $V^\dagger V=I$\\[-1pt]\scriptsize $\sum p=1$, $\varnothing$ row};
+  \node[read] (zj) at (8.6,0.55) {\scriptsize $z_j$, Cayley step};
+  \node[read] (zk) at (8.6,-0.55) {\scriptsize $z_k$, Cayley step};
+  \node[box, minimum width=2.6cm] (glue) at (12.6,0) {glue + read\\[-1pt]\scriptsize Betti, $c_1$, $\det\prod G$};
+  \draw[->, quiet] (ev) -- (psi);
+  \draw[->, quiet] (psi) -- (dec);
+  \draw[->, accent, thick] (dec.east) -- ++(0.6,0) |- (zj.west);
+  \draw[->, accent, thick] (dec.east) -- ++(0.6,0) |- (zk.west);
+  \draw[->, cyan!70!blue, thick] (zj.east) to[bend left=70] node[right, font=\scriptsize] {$G_{jk}$} (zk.east);
+  \draw[->, quiet] ($(zj.east)!0.5!(zk.east)+(1.25,0)$) -- (glue.west);
+  \draw[->, cyan!70!blue, thick, dashed] (glue.north) to[out=110, in=70] node[above, font=\scriptsize, text=cyan!70!blue] {$w\leftarrow(1-\varepsilon)\,D(P_h(z,w))+\varepsilon/M$} (dec.north);
+\end{tikzpicture}
+\caption{ASMODEOUS, one step. Amber: the charts read this step, the only ones that compute. Blue: the observer, its gauge links and its damped time-traveller loop. Grey: everything that costs nothing until it is called.}
+\label{fig:asmodeous}
+\end{figure}

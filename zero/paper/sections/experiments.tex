@@ -1,0 +1,38 @@
+\section{Experiments}\label{sec:experiments}
+
+Each claim of the project is a question put to a measurement. The beds, the bars and the kills are written into a preregistration file (\texttt{PREREG.md}) and committed before any result file exists, and every claim is scored for ASMODEOUS, its two parents and HYBRID under the same beds, seeds, matched sizes and owned baselines. The verdict for a claim names whichever candidate passes it. This section states the questions only; the bars live in \texttt{PREREG.md}.
+
+\subsection{Measurement discipline}
+
+Five rules govern every comparison. (L-GIVEN) Any structure that a bed supplies (charts, routing, gluing, manifolds, graphs) must be learned by SGD, and hand-given structure scores as ``representable only''. (L-PREREG) Beds, bars and kills are committed before any result exists; anything later is a post-hoc label. (L-BR) Baselines are the best owned methods at equal active FLOPs and equal total parameters, trained by SGD and tuned on a separate seed (Section~\ref{sec:baselines}). (L-WALD) A designed bed counts only if a neutral bed runs beside it. (L-LEARN) An arm must clear its in-distribution bar before it is compared. A literature gap is not a new primitive: novelty is earned only by a decisive test that the owned parts fail.
+
+\subsection{Core tests}
+
+\begin{description}
+  \item[T0, reproduce.] Does the reference script reproduce its pinned output?
+  \item[T1, owner hunt.] Is the full combination already owned? Every owned part is cited and used as a baseline.
+  \item[T2, geometry (C1, C2).] On the sphere, torus, Klein bottle and $SO(3)$, with no manifold, chart or state ever given, does the atlas stop tearing at exactly $K=\atlas(M)$ with charts of the manifold's own dimension, and does the nerve recover the true Betti numbers online? A neutral flat bed runs beside them.
+  \item[T3, lazy scaling (C3).] At fixed active compute, does loss fall as the number of charts $K$ grows, below a dense JEPA and below one JEPA with PEER experts? Does lazy top-$m$ stay within tolerance of the soft mixture over all $K$?
+  \item[T4, collapse (C4).] With the anti-collapse regulariser weakened or removed, does observer competition keep the representation from collapsing? Does the atlas match MoP-JEPA on mode collapse on the OGBench pointmaze-stitch task?
+  \item[T5, time-traveller (C5).] Does reading predicted futures before committing beat owned latent MPC at equal planning compute, on MuJoCo swing-up and OGBench pointmaze?
+  \item[T6, contextuality.] Do query pairs show order effects and QQ-equality statistics as a quantum-structured observer predicts? Measurement only.
+  \item[T7, systems.] Do lazy routing and tiny JEPAs run faster on a consumer GPU than a dense JEPA of equal quality?
+\end{description}
+
+\subsection{Origin-derived readouts}
+
+These are scored alongside the core tests, for every candidate where they are defined.
+
+\begin{description}
+  \item[TO1, Chern.] Does the learned amplitude bundle read $\lvert c_1\rvert=1$ on the Berry bed and $0$ on its trivial control?
+  \item[TO2, fixed point.] Does the closed-loop observer converge, and does it beat one-pass routing at equal FLOPs?
+  \item[TO3, halt before start.] Does a one-shot head predict the converged $w^\star$ at a fraction of the loop's cost?
+  \item[TO4, butterfly.] Is $\lambda_1>0$ while the integer readouts stay put under perturbation?
+  \item[TO5, scattering front end.] Does a multiscale scattering cascade reach the same prediction quality in fewer steps?
+  \item[TO6, rays through a lattice.] Does ray-cast selection over a grid of charts match product keys at lower cost?
+  \item[TO7, holonomy.] Does the sign of the holonomy along held-out loops separate the torus from the Klein bottle?
+\end{description}
+
+\subsection{The hybrid claim}
+
+HYBRID is held to the ``best of both'' claim directly. On each claim it must be at least as good as the better of OBSERVER-ATLAS and PHASE-SPHERE within that claim's own tolerance, and strictly better than both on at least one preregistered claim, with a paired confidence interval whose lower bound is above zero, at equal matched sizes. The preregistered kill fires if composition costs more than it adds, or if every learned limit collapses so that the hybrid has learned to be the atlas. Ablations that switch each part off (coherence parameters frozen at zero, the loop gate at zero, the phases frozen at zero) decide which part earned a win, under the same budget; a hybrid win counts only for the part whose ablation loses it. The Chern and holonomy readouts are eval-only and never enter a loss. A real-valued arm has a trivial amplitude bundle by construction, so it reads $c_1=0$, which counts as a miss on the Berry bed and not as a void.

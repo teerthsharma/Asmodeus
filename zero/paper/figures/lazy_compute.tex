@@ -1,0 +1,25 @@
+% Lazy compute: only the observed charts execute. Accent = observed, grey dashed = potential only.
+\begin{tikzpicture}[font=\footnotesize, >=Stealth]
+  \node[draw, thick, rounded corners=3pt, minimum width=4.2cm, minimum height=0.8cm] (obs) at (6.3,2.4) {observer: routing + top-$m$};
+  \foreach \i/\lab in {1/1,2/2,3/3,4/4,5/5,6/6,7/7,8/8,9/9,10/K} {
+    \pgfmathsetmacro{\x}{0.6+(\i-1)*1.3}
+    \ifnum\i=4
+      \node[draw=accent, very thick, fill=accent!22, rounded corners=3pt, minimum size=0.9cm] (c\i) at (\x,0.6) {};
+      \node[accent, font=\footnotesize\bfseries] at (\x,0.6) {\lab};
+      \node[accent, align=center, font=\scriptsize] at (\x,-0.25) {$E_k,P_k$\\run};
+    \else\ifnum\i=7
+      \node[draw=accent, very thick, fill=accent!22, rounded corners=3pt, minimum size=0.9cm] (c\i) at (\x,0.6) {};
+      \node[accent, font=\footnotesize\bfseries] at (\x,0.6) {\lab};
+      \node[accent, align=center, font=\scriptsize] at (\x,-0.25) {$E_k,P_k$\\run};
+    \else
+      \node[draw=quiet, dashed, thick, rounded corners=3pt, minimum size=0.9cm] (c\i) at (\x,0.6) {};
+      \node[quiet] at (\x,0.6) {\lab};
+      \node[quiet, font=\scriptsize] at (\x,-0.25) {0 FLOPs};
+    \fi\fi
+  }
+  \draw[->, thick] (obs.south) ++(-0.7,0) -- (c4.north);
+  \draw[->, thick] (obs.south) ++(0.7,0) -- (c7.north);
+  \node[quiet] at (6.3,-1.0) {cost per step = routing + $m$ tiny charts; the other $K-m$ charts are potential, not computation};
+\end{tikzpicture}
+\caption{Lazy compute. Only the observed charts (accent) run their encoder $E_k$ and predictor $P_k$; every unselected chart (dashed grey) costs zero FLOPs.}
+\label{fig:lazy}

@@ -1,0 +1,72 @@
+\section{Method}\label{sec:method}
+
+ASMODEOUS (Section~\ref{sec:asmodeous}) takes its parts from two parents, and both parents also run in full as first-class candidates on identical beds, seeds and metrics through one contract. A part that wins is kept and built on; a part that loses is replaced.
+
+\subsection{OBSERVER-ATLAS}\label{sec:observer-atlas}
+
+The atlas is $K$ tiny JEPAs with private charts (Figure~\ref{fig:observer}). Chart $k$ has an encoder $E_k:o_t\to z_k\in\R^{d_c}$ with $d_c$ small, a predictor $P_k:(z_k,a_t)\to\hat z_k$ in the same chart, a stop-gradient or EMA target encoder, and a gluing map $\phi_k$. A small causal backbone produces the context $c_t$, the observer turns it into the weights of Equation~\eqref{eq:pou}, a gate lets it observe nothing, and only the top-$m$ charts run (Figure~\ref{fig:lazy}). Charts are glued by Equations~\eqref{eq:glue} and~\eqref{eq:predglue}.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/observer_sphere}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \input{figures/lazy_compute}
+\end{figure}
+
+The loss is the sum of: a per-chart JEPA loss against the stop-gradient target in the same chart, an overlap consistency term that makes co-selected charts agree in $\R^{D_g}$, a per-chart and glued-latent SIGReg term~\cite{lejepa}, a router load-balance term, and the task loss through $g$. Every structure the model uses (charts, routing, gluing, the manifold itself) is learned by SGD; hand-given structure scores as ``representable only'', never as ``works''. Anti-collapse is mandatory in every arm, because every self-supervised term here is minimised by a constant; the claim that observer competition alone limits collapse is tested only by ablation.
+
+\subsection{PHASE-SPHERE}
+
+The design of the origin notes is built as follows. The state is $\psi_t=\mathrm{normalise}(E(o_t))\in\C^N$. There are $K$ learned chart gauges $u_k$ and a null gauge $u_\varnothing$. A Born decider (Equation~\eqref{eq:born}) with a ``nothing'' outcome sets the gate $\gamma=1-p_\varnothing$. Lazy gauge-fixed charts $z_k$ are computed for the top-$m$ only, with a Cayley-unitary local dynamics (Equation~\eqref{eq:gauge}). The glued latent is $g=\gamma\sum_k\tilde w_k\,\phi_k([\mathrm{Re}\,z_k,\mathrm{Im}\,z_k])$, the transition phases are $\chi_{jk}$ (Equation~\eqref{eq:transphase}), and the closed-loop observer of Equation~\eqref{eq:fixedpoint} carries an amortised head. Its readouts are the Chern number of Equation~\eqref{eq:chern} and the Berry holonomy along held-out loops. Because amplitudes enter only through $K\cdot N$ Born scores, $K$ needs no product keys.
+
+\subsection{HYBRID}
+
+HYBRID is the composition of three parts: the real charts of OBSERVER-ATLAS; the coherent decider $p=\lvert U\psi\rvert^2$ with $\psi_k=\sqrt{\softmax(s)_k}\,e^{i\theta_k(q)}$ and $U$ a low-rank Cayley rotation; and the time-traveller loop (START preselects $M$ charts, the life-line rolls their candidate futures, HALT is the self-consistent set). Nothing is bound together by hand: every part has a limit in which it vanishes, and the arm starts at the first of those limits. \begin{equation}\label{eq:hybridlimits}
+  \begin{aligned}
+    \text{no coherence, no phase}&\ \Rightarrow\ \text{OBSERVER-ATLAS},\\
+    \text{no loop}&\ \Rightarrow\ \text{coherent atlas},\\
+    \text{no coherence}&\ \Rightarrow\ \text{time-traveller atlas}.
+  \end{aligned}
+\end{equation}
+In the implementation the coherence parameters $C_p$ vanish in the no-coherence limit, and a loop gate $\gamma_{\mathrm h}$ (distinct from the observer gate of Equation~\eqref{eq:glue}) vanishes in the no-loop limit; the initialisation sits at the first limit, where $\theta$ has no effect. The hybrid contains OBSERVER-ATLAS, the coherent atlas and the time-traveller atlas as special cases, and learns how far from each to move. If the fixed-point observer of PHASE-SPHERE replaces the time-traveller loop, that is a recorded change made before any hybrid result, never a post-hoc pick between the two loops.
+
+\subsection{The time-traveller}
+
+The origin figure is the G\"odel-universe closed timelike curve (Figure~\ref{fig:ctc}): a life-line leaves the axis at START, spirals out to where the angular circles turn timelike, rides them backward in $t$, and returns to the axis at HALT, earlier than it left. In the architecture the life-line is the roll-out of candidate futures, and HALT is the self-consistent choice of Equation~\eqref{eq:fixedpoint}. The observer does not guess a chart and then find out. It reads what each candidate would predict and commits to the choice that survives its own prediction, and an amortised head learns to produce that choice in a single pass.
+
+\begin{figure}[t]
+  \centering
+  \input{figures/ctc_loop}
+\end{figure}
+
+\subsection{Owned baselines and the matching rule}\label{sec:baselines}
+
+Every owned method is a baseline, built to the same contract, trained by SGD, and matched to the atlas at \emph{equal active FLOPs and equal total parameters}. Active FLOPs are the multiply-accumulates per step of the observer's forward pass, and parameters exclude EMA copies; the atlas uses the same counting conventions. Each arm carries the shared SIGReg term and an EMA target, and takes only observations and actions as input. Table~\ref{tab:arms} lists the arms.
+
+\begin{table}[t]
+\centering
+\small
+\caption{The owned baselines and the role each plays.}
+\label{tab:arms}
+\begin{tabular}{@{}p{4.2cm}p{11.2cm}@{}}
+\toprule
+Arm & Role \\
+\midrule
+Single JEPA, several latent widths & The Whitney baseline: one chart wide enough to embed the manifold. \\
+MoP-JEPA (dense and lazy)~\cite{mopjepa} & The closest owner: $K$ predictor heads on a shared encoder behind a context-only softmax router. \\
+Chart-AE JEPA~\cite{schonsheck2019chartae} & Owner of separate charts and gluing, with membership over all $K$ charts. \\
+Lazy chart-AE JEPA & The observer ablation: the atlas without the backbone, the gate and the keys. \\
+PEER-JEPA~\cite{peer} & The owned route to ``parameters grow, compute stays fixed'' by product-key experts. \\
+CEM planner & V-JEPA-2-AC-style~\cite{vjepa2} model-predictive control over any arm's rollout, with planning compute equalised across arms. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The matching rule (L-BR) sizes each arm by its hidden width against the atlas's active FLOPs and parameters, with a tolerance of $\pm5\%$ on each axis. Two cases arise. When one configuration of the arm hits both targets, a single baseline runs (``both''). When the arm cannot hold the atlas's ratio of parameters to FLOPs, two baselines run: one at equal compute with fewer parameters (``flop''), and one at equal parameters with more compute (``param''). The atlas must beat each baseline on the axis it is matched on. Dense arms have parameters close to FLOPs, while top-1-of-$K$ arms have a parameter-to-FLOP ratio below $K$. A ``both'' match whose smallest width falls below $32$ is degenerate (for example a very narrow encoder feeding very wide heads) and is replaced by the split. Most of the atlas's active FLOPs sit in its causal backbone, and every owned arm spends that budget on encoder width instead.
+
+Hyperparameters are tuned on a separate seed, with the same budget for every arm, the atlas included; widths are fixed by matching and never tuned. The selected configuration is frozen and trained on the evaluation seeds. The HYBRID arm is matched in the same way, with the coherent decider and its extra parameters counted, and its planning budget includes the coherent START decider and the worst-case loop cost.
+
+Where an owned method is reimplemented, the deviations from its source are recorded. MoP-JEPA gains a SIGReg term because anti-collapse is mandatory in every arm (setting its weight to zero restores the paper-native arm, which the collapse test runs). Its unpublished hyperparameters are set by tuning, one prediction is read out at the router's top-1 head, and the latent width is set by matching rather than by the paper. Chart-AE JEPA replaces pixel reconstruction by JEPA losses against an EMA target, and the lazy variant adds top-$m$ routing with a load-balance term so that unselected charts keep a router gradient.

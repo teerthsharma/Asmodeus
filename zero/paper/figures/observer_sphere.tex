@@ -1,0 +1,37 @@
+% The observer choosing charts on a sphere. Accent = selected (top-m), grey = everything else.
+\begin{tikzpicture}[font=\footnotesize, >=Stealth]
+  % sphere cut into 8 patches; patches 2 and 3 selected
+  \def\R{1.6}
+  \foreach \k in {2,3} {
+    \pgfmathsetmacro{\a}{-(\k-1)*45}
+    \pgfmathsetmacro{\b}{-\k*45}
+    \fill[accent!40] (0,0) -- (\a:\R) arc (\a:\b:\R) -- cycle;
+  }
+  \draw[quiet, thick] (0,0) circle (\R);
+  \foreach \k in {0,...,7} { \draw[quiet] (0,0) -- (-\k*45:\R); }
+  \fill[quiet] (0,0) circle (1.5pt);
+  \foreach \k in {1,...,8} {
+    \pgfmathsetmacro{\m}{-(\k-0.5)*45}
+    \ifnum\k=2 \node[accent, font=\footnotesize\bfseries] at (\m:1.15) {\k};
+    \else\ifnum\k=3 \node[accent, font=\footnotesize\bfseries] at (\m:1.15) {\k};
+    \else \node[quiet] at (\m:1.15) {\k};
+    \fi\fi
+  }
+  % observer
+  \node[draw, thick, rounded corners=3pt, minimum width=1.5cm, minimum height=0.9cm, align=center] (obs) at (-3.6,0) {observer\\$q\cdot\kappa$};
+  \draw[->, thick] (obs.east) -- (-0.2,0);
+  \node[quiet, align=center] at (0,-2.2) {each patch is one tiny JEPA\\with its own chart};
+  % softmax weights
+  \draw[quiet, thick] (3.1,-1.6) -- (6.3,-1.6);
+  \foreach \h/\i in {0.18/1, 2.28/2, 1.86/3, 0.36/4, 0.24/5, 0.30/6, 0.48/7, 0.30/8} {
+    \pgfmathsetmacro{\x}{3.2+(\i-1)*0.38}
+    \ifnum\i=2 \fill[accent] (\x,-1.6) rectangle (\x+0.28,-1.6+\h); \node[accent, font=\footnotesize\bfseries] at (\x+0.14,-1.9) {\i};
+    \else\ifnum\i=3 \fill[accent] (\x,-1.6) rectangle (\x+0.28,-1.6+\h); \node[accent, font=\footnotesize\bfseries] at (\x+0.14,-1.9) {\i};
+    \else \fill[quiet!60] (\x,-1.6) rectangle (\x+0.28,-1.6+\h); \node[quiet] at (\x+0.14,-1.9) {\i};
+    \fi\fi
+  }
+  \node[quiet] at (4.7,1.6) {softmax weights $w_k$ over the patches};
+  \node[accent] at (4.7,1.15) {top-$m$: observed, so they exist};
+\end{tikzpicture}
+\caption{The observer chooses charts on a sphere. A softmax over the patches assigns weights $w_k$; the heaviest $m$ (here $m=2$, shown in the accent colour) are observed and therefore computed. The bar heights are illustrative.}
+\label{fig:observer}

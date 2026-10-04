@@ -1,0 +1,20 @@
+#!/bin/sh
+# zero/ pre-commit gate (Wilson). Install: cp zero/queue/pre-commit .git/hooks/pre-commit
+# Refuses a commit when:
+#  1. staged changes add AI attribution lines (PROMPT §1 Security);
+#  2. zero/PREREG.md is staged while any result file is already tracked under zero/runs/ (L-PREREG/L-AUDIT:
+#     bars change only before results exist);
+#  3. the fast fact/law/queue tests fail (skipped with ZERO_HOOK_NO_TESTS=1, used by its own test).
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+if git diff --cached -U0 | grep -E '^\+' | grep -v '^+++' | grep -qiE 'co-author[e]d-by: *[c]laude|generated with \[?[c]laude|noreply@[a]nthropic\.com'; then
+  echo "pre-commit: AI attribution line in staged changes" >&2; exit 1
+fi
+if git diff --cached --name-only | grep -qx 'zero/PREREG.md' && [ -n "$(git ls-files zero/runs)" ]; then
+  echo "pre-commit: PREREG.md changed after results exist in zero/runs/" >&2; exit 1
+fi
+if [ "${ZERO_HOOK_NO_TESTS:-0}" != "1" ] && [ -d zero/tests ]; then
+  (cd zero && python -m pytest -q tests/test_laws.py tests/test_facts.py tests/test_queue.py) >/dev/null 2>&1 \
+    || { echo "pre-commit: zero fast tests failed (run them in zero/)" >&2; exit 1; }
+fi
+exit 0

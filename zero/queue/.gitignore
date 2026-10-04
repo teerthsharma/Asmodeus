@@ -1,0 +1,6 @@
+events.log
+status.json
+runner.log
+logs/
+specs/
+*.tmp

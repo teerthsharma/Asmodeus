@@ -1,0 +1,8 @@
+#!/bin/sh
+# PROMPT.md §1 Security: private slugs gitignored + test asserts it before every commit.
+# Install: cp zero/hooks/pre-commit .git/hooks/pre-commit
+cd "$(git rev-parse --show-toplevel)" || exit 1
+[ -f zero/tests/test_laws.py ] || exit 0          # branches without zero/ are not gated
+PY=$(command -v python || command -v python3) || { echo "pre-commit: no python, commit blocked" >&2; exit 1; }
+"$PY" -m pytest zero/tests/test_laws.py -q -p no:cacheprovider || {
+  echo "pre-commit: zero/tests/test_laws.py failed, commit blocked" >&2; exit 1; }

@@ -1,0 +1,21 @@
+% Event-driven time: compute only at events, idle between. Accent = events (compute), grey = everything else.
+\begin{tikzpicture}[font=\footnotesize, >=Stealth]
+  % fixed-rate clock: compute on every tick
+  \node[quiet, right] at (0,4.55) {fixed-rate clock: compute on every tick};
+  \foreach \i in {0,...,28} { \fill[quiet] (\i*0.4,4.1) circle (1.6pt); }
+  % scene features
+  \node[quiet, right] at (0,3.35) {scene features $\mu(t)$};
+  \draw[quiet, thick] (0,2.0) -- (1.7,2.0) -- (1.9,2.76) -- (4.3,2.76) -- (4.5,1.8) -- (7.8,1.8) -- (8.0,2.56) -- (9.6,2.56) -- (9.8,1.8) -- (11.4,1.8);
+  \draw[quiet, dashed] (0,1.2) -- (11.4,1.2);
+  % events
+  \foreach \x in {1.8,4.4,7.9,9.7} {
+    \draw[accent, very thick] (\x,3.0) -- (\x,1.0);
+    \fill[accent] (\x,1.2) circle (3pt);
+  }
+  \node[quiet] at (3.1,0.85) {idle};
+  \node[quiet] at (6.15,0.85) {idle};
+  \node[accent] at (8.8,0.45) {events: $\Delta(t)\ge\epsilon$};
+  \node[quiet, right] at (0,0.45) {compute only at events, idle between};
+\end{tikzpicture}
+\caption{Event-driven time. A fixed-rate clock computes on every tick; the event-driven clock fires only when the scene deviation $\Delta(t)$ reaches the threshold $\epsilon$ (accent) and idles in between.}
+\label{fig:event}

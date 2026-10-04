@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 640 230" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Charts glued by a partition of unity into R^Dg, and the nerve that results">
+  <defs>
+    <marker id="cq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0ea5e9"/></marker>
+  </defs>
+  <!-- four overlapping chart domains in a ring -->
+  <g fill="#888" fill-opacity="0.10" stroke="#888" stroke-width="1.5">
+    <circle cx="60" cy="110" r="34"/><circle cx="110" cy="70" r="34"/>
+    <circle cx="160" cy="110" r="34"/><circle cx="110" cy="150" r="34"/>
+  </g>
+  <g font-family="sans-serif" font-size="12" fill="#888" text-anchor="middle">
+    <text x="42" y="114">U<tspan baseline-shift="sub" font-size="9">1</tspan></text>
+    <text x="110" y="58">U<tspan baseline-shift="sub" font-size="9">2</tspan></text>
+    <text x="178" y="114">U<tspan baseline-shift="sub" font-size="9">3</tspan></text>
+    <text x="110" y="168">U<tspan baseline-shift="sub" font-size="9">4</tspan></text>
+    <text x="110" y="214">charts, overlapping in pairs</text>
+  </g>
+  <!-- gluing arrows -->
+  <line x1="205" y1="110" x2="268" y2="110" stroke="#0ea5e9" stroke-width="2" marker-end="url(#cq)"/>
+  <text x="236" y="98" font-family="sans-serif" font-size="12" fill="#0ea5e9" text-anchor="middle">φ<tspan baseline-shift="sub" font-size="9">k</tspan>, w<tspan baseline-shift="sub" font-size="9">k</tspan></text>
+  <!-- glued space -->
+  <rect x="272" y="50" width="150" height="120" rx="10" fill="none" stroke="#888" stroke-width="1.5"/>
+  <ellipse cx="347" cy="110" rx="48" ry="30" fill="none" stroke="#0ea5e9" stroke-width="2.5"/>
+  <text x="347" y="42" font-family="sans-serif" font-size="12" fill="#888" text-anchor="middle">glued latent space ℝ<tspan baseline-shift="super" font-size="9">D</tspan><tspan baseline-shift="sub" font-size="9">g</tspan></text>
+  <text x="347" y="190" font-family="sans-serif" font-size="12" fill="#888" text-anchor="middle">g = Σ w<tspan baseline-shift="sub" font-size="9">k</tspan> φ<tspan baseline-shift="sub" font-size="9">k</tspan>(z<tspan baseline-shift="sub" font-size="9">k</tspan>)</text>
+  <!-- nerve -->
+  <line x1="438" y1="110" x2="476" y2="110" stroke="#888" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <g stroke="#d97706" stroke-width="2.5" fill="none">
+    <polygon points="545,60 595,110 545,160 495,110"/>
+  </g>
+  <g fill="#d97706"><circle cx="545" cy="60" r="6"/><circle cx="595" cy="110" r="6"/><circle cx="545" cy="160" r="6"/><circle cx="495" cy="110" r="6"/></g>
+  <g font-family="sans-serif" font-size="12" fill="#888" text-anchor="middle">
+    <text x="545" y="48">1</text><text x="610" y="114">2</text><text x="545" y="178">3</text><text x="480" y="114">4</text>
+    <text x="545" y="214">nerve N<tspan baseline-shift="sub" font-size="9">τ</tspan>: an edge where two charts are co-selected</text>
+  </g>
+  <text x="545" y="115" font-family="sans-serif" font-size="12" fill="#d97706" text-anchor="middle">β = (1, 1)</text>
+</svg>

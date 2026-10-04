@@ -1,0 +1,36 @@
+\section{Background}\label{sec:background}
+
+\subsection{Why an observer?}
+
+An observer is the point where a continuum of possibilities becomes one outcome. Quantum mechanics names the operation (measurement), attention names its classical cousin (softmax over keys), and the body gives the everyday example: an intention picks a goal, and the geometry of the body computes the path. In every case there is a small decider on top and a rich local mechanism below, and the decider only has to pick, not to compute.
+
+The paradox that opens the project is that \emph{the more often a system is watched, the less it moves}. Rotate a spin by a half-turn in $N$ equal steps and measure after each step; the survival probability of the starting state is
+\begin{equation}\label{eq:zeno}
+  P_{\mathrm{surv}}(N)=\cos^{2N}\!\left(\frac{\pi}{2N}\right)\;\xrightarrow{\;N\to\infty\;}\;1,
+\end{equation}
+where $N$ is the number of measurements during the rotation and $P_{\mathrm{surv}}$ is the probability that every measurement finds the system still in its starting state~\cite{misra1977zeno}. The observer changes what the system does. This is the first sign that an observer is a dynamical object and not a readout.
+
+\subsection{Prior art}
+
+Every part of the design has a closest owner. Table~\ref{tab:prior} names what each owns and what this work adds on top. Each owner is a baseline, a source of vocabulary, and a point of comparison.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Prior art: what each closest owner holds, and what the atlas adds.}
+\label{tab:prior}
+\begin{tabular}{@{}p{2.7cm}p{6.1cm}p{6.5cm}@{}}
+\toprule
+Work & What it owns & What the atlas adds \\
+\midrule
+MoP-JEPA~\cite{mopjepa} & A context-only softmax router over $K$ JEPA predictor heads on a shared encoder, with hard winner-take-all selection; fixes conditional-mean collapse. & A separate chart (encoder and embedding space) for every JEPA; lazy evaluation, so unselected charts cost nothing; gluing of charts into a higher-dimensional space; a topology readout from the observer. \\
+Chart Auto-Encoders~\cite{schonsheck2019chartae} & Atlases of local charts with learned encoders, decoders and chart membership, for auto-encoding manifolds. & Predictive (JEPA) charts instead of reconstruction; an observer that routes among charts; lazy top-$m$ evaluation; online nerve topology. \\
+POUnets~\cite{pounets} & Learned partitions of unity that glue local approximations, for regression. & Partition of unity as an observer over latent world-model charts; laziness; a nerve readout of the cover that was learned. \\
+PEER~\cite{peer} & Retrieval of a few experts out of a very large pool by product keys; parameters grow while compute stays fixed. & Experts that are charts with their own coordinates, glued into one space, with the topology of their co-selection read out. \\
+LeJEPA / SIGReg~\cite{lejepa} & An anti-collapse regulariser (SIGReg) for joint-embedding predictive learning. & SIGReg applied per chart and on the glued latent; observer competition as a second, independent anti-collapse mechanism, tested by ablation. \\
+V-JEPA 2~\cite{vjepa2} & Action-conditioned latent world models used for planning by model-predictive control. & An observer that reads the predicted futures of candidate charts before committing: a closed-loop decider with a fixed-point condition. \\
+Mixture-of-Depths~\cite{raposo2024mod} & Per-token dynamic allocation of compute across layers. & Allocation across charts and across time, with the allocation itself carrying a topological readout. \\
+Mapper~\cite{singh2007mapper} & Post-hoc topological summary of a data cloud through a cover and its nerve. & The cover is learned online by the observer, so the nerve is read from the model while it runs. \\
+\bottomrule
+\end{tabular}
+\end{table}

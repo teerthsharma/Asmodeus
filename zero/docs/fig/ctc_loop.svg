@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 640 310" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A closed timelike curve with START and HALT, and an observer reading predicted futures before committing">
+  <defs>
+    <marker id="dq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#888"/></marker>
+    <marker id="da" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d97706"/></marker>
+    <marker id="dc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0ea5e9"/></marker>
+  </defs>
+  <!-- time axis -->
+  <line x1="90" y1="290" x2="90" y2="20" stroke="#888" stroke-width="1.5" marker-end="url(#dq)"/>
+  <text x="102" y="28" font-family="sans-serif" font-size="13" fill="#888">t</text>
+  <!-- closed life-line: leaves START, rides back in t, arrives at HALT below START -->
+  <path d="M90,100 C190,55 285,110 262,185 C242,252 150,262 112,214 C98,196 92,185 90,170" fill="none" stroke="#0ea5e9" stroke-width="3" marker-end="url(#dc)"/>
+  <circle cx="90" cy="100" r="6" fill="#d97706"/>
+  <circle cx="90" cy="170" r="6" fill="#d97706"/>
+  <g font-family="sans-serif" font-size="13" font-weight="bold" fill="#d97706">
+    <text x="24" y="104">START</text><text x="30" y="174">HALT</text>
+  </g>
+  <text x="145" y="302" font-family="sans-serif" font-size="12" fill="#888">the life-line returns earlier than it left</text>
+  <!-- tipped light cones along the axis -->
+  <g stroke="#888" stroke-width="1" fill="none">
+    <path d="M90,80 L78,60 M90,80 L102,60"/><path d="M90,150 L80,134 M90,150 L100,134"/>
+  </g>
+  <!-- observer reading predicted futures -->
+  <text x="470" y="26" font-family="sans-serif" font-size="13" fill="#888" text-anchor="middle">the observer reads predicted futures</text>
+  <circle cx="360" cy="150" r="7" fill="#d97706"/>
+  <text x="360" y="176" font-family="sans-serif" font-size="12" fill="#d97706" text-anchor="middle" font-weight="bold">START</text>
+  <path d="M367,148 C430,110 490,80 560,72" fill="none" stroke="#888" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#dq)"/>
+  <path d="M367,150 C440,150 500,150 560,150" fill="none" stroke="#d97706" stroke-width="3" marker-end="url(#da)"/>
+  <path d="M367,152 C430,190 490,220 560,228" fill="none" stroke="#888" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#dq)"/>
+  <g font-family="sans-serif" font-size="12" fill="#888" text-anchor="middle">
+    <text x="585" y="76">ĝ<tspan baseline-shift="sub" font-size="9">1</tspan></text>
+    <text x="585" y="232">ĝ<tspan baseline-shift="sub" font-size="9">3</tspan></text>
+  </g>
+  <text x="585" y="154" font-family="sans-serif" font-size="12" fill="#d97706" text-anchor="middle" font-weight="bold">ĝ<tspan baseline-shift="sub" font-size="9">2</tspan></text>
+  <!-- commit loop back -->
+  <path d="M585,162 C600,270 400,280 372,166" fill="none" stroke="#0ea5e9" stroke-width="2" marker-end="url(#dc)"/>
+  <text x="480" y="282" font-family="sans-serif" font-size="13" fill="#0ea5e9" text-anchor="middle">commit only if w* = D(P<tspan baseline-shift="sub" font-size="9">h</tspan>(z, w*))</text>
+</svg>

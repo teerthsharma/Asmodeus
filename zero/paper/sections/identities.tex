@@ -1,0 +1,40 @@
+\section{Verified identities}\label{sec:identities}
+
+Everything the mathematics stands on is a checked identity before it is a design. Every line of Table~\ref{tab:identities} is produced by the reference script \texttt{ref/identities.py} (pinned by SHA-256) or asserted by a passing test in the \texttt{tests/} directory of the accompanying code (eight test modules, covering the facts, the phase sphere, the coherent observer, contextuality, the observer atlas, the owned arms, topology, and the systems benchmark).
+
+\begin{table}[t]
+\centering
+\footnotesize
+\caption{Verified identities. The first column names the identity, the second its value, the third how it is checked.}
+\label{tab:identities}
+\begin{tabular}{@{}p{3.9cm}p{5.4cm}p{6.1cm}@{}}
+\toprule
+Identity & Value & Check \\
+\midrule
+Pin: SHA-256 of \texttt{ref/identities.py} & \texttt{467c2ae2\dots40a3fe} & matches the pin \\
+Zeno: $\cos^{2N}(\pi/2N)$, $N=1,2,10,100,1000$ & $0.000000$, $0.250000$, $0.780546$, $0.975627$, $0.997536$ & simulated survival equal to 6 decimals \\
+Born: $p=\softmax(2\log\lvert\alpha\rvert)$ & $=\lvert\alpha\rvert^2/\sum\lvert\alpha\rvert^2$ & atol $10^{-12}$, $100\times 9$ complex128 \\
+L\"uders: $\max\lvert QQ\rvert$, pure and mixed states & $<10^{-14}$ & QQ equality holds \\
+Classical: $\mathrm{mean}\lvert QQ\rvert$, with disturbance & $0.0751$ & QQ equality breaks \\
+Softmax: causal stack, mass on token $1$ & $0.2543$ ($L=1$) $\to$ $1.0000$ ($L=16$) & reference script or test suite \\
+IIA: $p_1/p_2$, key $3$ present / removed & softmax $1.3499$ / $1.3499$; coherent $g=1$: $2.0587$ / $1.3499$ & reference script or test suite \\
+Cayley: $U^\dagger U=I$ & $50$ random generators & atol $10^{-10}$ \\
+POVM: $\sum_k E_k=I$, $E_k\succeq 0$ & $K=N$ and Naimark $K>N$, 50 draws each & atol $10^{-10}$ (\texttt{tests/test\_povm.py}) \\
+Frame: $V^\dagger V=I$, Stiefel retraction & $K\in\{16,65,257\}$ & $<10^{-10}$ (\texttt{tests/test\_asmodeous\_ops.py}) \\
+Tight frame: $\sum p=1$ for $K>N$ outcomes & $p\ge 0$ & $<10^{-10}$ \\
+Damped CTC loop: unique fixed point & 10 random starts & residual $<10^{-8}$; undamped cycle does not converge \\
+Gauge links: $G_{jk}$ unitary, exact cocycle & random generators & $<10^{-10}$ \\
+Parity: lazy top-$m$ $=$ dense masked mix & $K=8$ flat keys, $K=16$ product keys & atol $10^{-10}$ (float64) \\
+Laziness & $g$, $\hat g$, loss unchanged (atol $10^{-12}$); dense control $\to$ NaN & unselected charts NaN-poisoned \\
+FLOPs: active MACs, $m$ vs $K$ & per-chart cost exact in $m$; $K$ enters only the router & reference script or test suite \\
+Kernel: fused Triton step $=$ \texttt{observe()} & $K=16\ldots4096$, flat and product keys & $10^{-4}$ \\
+Berry: $\gamma=-\Omega/2$, spin-$\tfrac12$ latitude loops & $5/5$ latitudes; $200$ triangles exact to $10^{-9}$ & reference script or test suite \\
+Chern: FHS lattice, levels $2,3,4$ & spin-$\tfrac12$ $-1$; spin-$1$ $-2$; trivial $0$ & reference script or test suite \\
+Holonomy: transported sign & Klein $-1$; torus $+1$ & reference script or test suite \\
+Fixed point: $w^\star=D(P(z,w^\star))$, $1000$ stochastic maps & residual $<10^{-8}$ & reference script or test suite \\
+Betti $\Zt$: $S^2$, $T^2$, Klein, $\RP^3$ & $(1,0,1)$; $(1,2,1)$; $(1,2,1)$; $(1,1,1,1)$ & reference script or test suite \\
+Betti $\mathbb Q$: $T^2$, Klein & $(1,2,1)$; $(1,1,0)$ & reference script or test suite \\
+Nerve: top-$m$ readout, $20$ seeds & $\dim\le m-1$; PoU at $\tau$: $\dim\le\lfloor1/\tau\rfloor-1$ & reference script or test suite \\
+\bottomrule
+\end{tabular}
+\end{table}

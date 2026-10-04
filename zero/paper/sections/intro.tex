@@ -1,0 +1,31 @@
+\section{Introduction}\label{sec:intro}
+
+Computation has a hidden assumption: that the whole state is always there, waiting. A transformer holds every token against every token. A dense network runs every weight on every input. A fixed-rate renderer draws every frame whether or not anything moved. The world does not work like this. A quantum system is a superposition until it is measured, and what is measured is a \emph{choice} of basis that the observer makes. The idea of this paper is to build a learner that is made the same way: \textbf{nothing is computed until it is observed, and the observer decides what is worth observing.}
+
+Picture a sphere cut into patches (Figure~\ref{fig:observer}). Each patch is a small model of its own neighbourhood: a tiny predictor with its own few coordinates, valid only where it lives. No single patch covers the sphere, and no single coordinate system ever can; that is a theorem, not a preference. The sphere is understood only by many small charts that agree where they overlap. Over the patches sits one decider, a softmax. It looks at the situation, assigns weight to the patches, and lets the heavy ones become real. The rest stay as potential: zero cost, zero parameters touched.
+
+That picture carries a chain of ideas, and each link gives the next its reason.
+\begin{enumerate}
+  \item \textbf{The observer.} Turing's watched-pot paradox, the quantum Zeno effect~\cite{misra1977zeno}, says that a system measured often enough is frozen. The observer is not a spectator. It is part of the dynamics, and a model of computation that leaves it out leaves out the one operation that decides anything.
+  \item \textbf{Quantum mathematics as an abstraction.} Linear superposition, then a measurement that breaks linearity: that two-step structure runs on a classical GPU as complex linear algebra followed by a normalisation. No quantum hardware and no quantum claim are involved, only the mathematics.
+  \item \textbf{Many tiny charts that become real only when observed.} The geometry is fragmented on purpose. Charts are cheap and numerous; compute is spent only on the few the observer chooses. Parameters scale with the number of charts and compute scales with the number \emph{observed}.
+  \item \textbf{One architecture from the best parts.} ASMODEOUS fills each slot (state, observer, charts, gluing, dynamics, loop, readout, training) with the part that does that job best, whichever parent it comes from. OBSERVER-ATLAS (a real atlas under a softmax observer) and PHASE-SPHERE (a phase sphere under a Born decider, the design of the origin notes) are its parents and run beside it. A part that wins is kept; a part that loses is replaced.
+  \item \textbf{The time-traveller.} The observer is a closed loop. It reads the predicted futures of its candidate charts, and commits only to a choice that is consistent with the future it causes.
+  \item \textbf{Time laziness.} The same principle applies to the clock. Computation fires at events and idles in between, as in the A.E.T.H.E.R.\ event-driven architecture.
+\end{enumerate}
+
+That is the image the name carries. Asmodeus, king of demons, commands a legion, and the legion costs nothing until it is summoned: the king names a few, those few appear and act in their own small corner of the world, and the rest remain names. Here the legion is the atlas of charts, the summons is the observer's softmax, and the corner each one acts in is its chart.
+
+The intended result is a model whose cost follows what matters, whose parameters grow without its compute growing, and whose learned structure can be \emph{read out as a topology} (an integer, a Betti vector, a holonomy) instead of being inferred after the fact. JEPA, mixture-of-experts and attention are vocabulary and baselines in this work, not constraints.
+
+\paragraph{Contributions.} The paper builds and tests the following.
+\begin{itemize}
+  \item ASMODEOUS: one architecture with a Parseval-frame POVM observer (exact probabilities with $K>N$ outcomes, so laziness costs no approximation), gauge-fixed charts on $\CP^{N-1}$, learned unitary gauge links, unitary dynamics and a damped, provably convergent time-traveller loop (Section~\ref{sec:asmodeous}).
+  \item OBSERVER-ATLAS: an atlas of tiny predictive charts with a gated softmax observer, lazy top-$m$ evaluation, gluing into a higher-dimensional latent space, and an online nerve readout (Sections~\ref{sec:maths} and~\ref{sec:method}).
+  \item PHASE-SPHERE: complex amplitudes on a sphere of phases with a Born decider, gauge-fixed charts, and integer readouts (a lattice Chern number and Berry holonomy) (Section~\ref{sec:method}).
+  \item HYBRID: the composition of the real charts, the coherent decider and the time-traveller loop, built so that each part has a limit in which it vanishes (Section~\ref{sec:method}).
+  \item A closed-loop observer defined as a fixed point, with an amortised head that predicts its answer in one pass, and an event-driven clock that spends compute only on deviation.
+  \item A suite of owned baselines (single JEPA, MoP-JEPA, chart auto-encoder JEPA, lazy chart auto-encoder JEPA, PEER-JEPA, a CEM planner), matched to the atlas at equal active FLOPs and equal parameters.
+  \item A table of verified identities that the mathematics rests on (Section~\ref{sec:identities}).
+  \item A preregistered measurement protocol, T0--T7 and TO1--TO7, with bars and kills written before any result exists (Section~\ref{sec:experiments}).
+\end{itemize}

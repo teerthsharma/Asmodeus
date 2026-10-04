@@ -1,0 +1,34 @@
+% Left: the Goedel-style closed timelike curve, HALT below START on the t axis.
+% Right: the observer reads three predicted futures and commits to the self-consistent one.
+\begin{tikzpicture}[font=\footnotesize, >=Stealth]
+  % ---- time axis and closed life-line ----
+  \draw[quiet, thick, ->] (0,0) -- (0,5.4);
+  \node[quiet, right] at (0.1,5.3) {$t$};
+  \draw[thick, -{Stealth}] (0,3.8) .. controls (2,4.7) and (3.9,3.6) .. (3.44,2.1)
+    .. controls (3.04,0.76) and (1.2,0.56) .. (0.44,1.52)
+    .. controls (0.16,1.88) and (0.04,2.1) .. (0,2.4);
+  \fill[accent] (0,3.8) circle (3pt);
+  \fill[accent] (0,2.4) circle (3pt);
+  \node[accent, left, font=\footnotesize\bfseries] at (-0.15,3.8) {START};
+  \node[accent, left, font=\footnotesize\bfseries] at (-0.15,2.4) {HALT};
+  % tipped light cones along the axis
+  \draw[quiet] (0,4.2) -- (-0.24,4.6) (0,4.2) -- (0.24,4.6);
+  \draw[quiet] (0,2.8) -- (-0.2,3.12) (0,2.8) -- (0.2,3.12);
+  \node[quiet] at (1.7,-0.35) {\scriptsize the life-line returns earlier than it left};
+
+  % ---- observer reading predicted futures ----
+  \node[quiet] at (7.9,5.3) {the observer reads predicted futures};
+  \fill[accent] (5.4,2.8) circle (3.5pt);
+  \node[accent, left, font=\footnotesize\bfseries] at (5.25,2.8) {START};
+  \draw[quiet, thick, dashed, -{Stealth}] (5.5,2.84) .. controls (6.8,3.6) and (8.0,4.2) .. (9.4,4.36);
+  \draw[accent, very thick, -{Stealth}]   (5.5,2.8)  -- (9.4,2.8);
+  \draw[quiet, thick, dashed, -{Stealth}] (5.5,2.76) .. controls (6.8,2.0) and (8.0,1.4) .. (9.4,1.24);
+  \node[quiet]  at (9.8,4.36) {$\hat g_1$};
+  \node[accent, font=\footnotesize\bfseries] at (9.8,2.8)  {$\hat g_2$};
+  \node[quiet]  at (9.8,1.24) {$\hat g_3$};
+  % commit loop back to START
+  \draw[thick, -{Stealth}] (9.9,2.56) .. controls (10.2,0.4) and (6.2,0.2) .. (5.64,2.48);
+  \node at (8.2,-0.35) {\scriptsize commit only if $w^\star = D(P_h(z,w^\star))$};
+\end{tikzpicture}
+\caption{The time-traveller. Left: a closed timelike curve in the G\"odel-universe picture; the life-line leaves the axis at START, rides back in $t$, and returns to the axis at HALT, earlier than it left. Right: the observer reads the predicted futures $\hat g_1,\hat g_2,\hat g_3$ of three candidate charts and commits only to the choice that is a fixed point of its own prediction.}
+\label{fig:ctc}

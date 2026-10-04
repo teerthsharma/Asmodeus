@@ -1,0 +1,46 @@
+\section{ASMODEOUS: one architecture, the best part in every slot}\label{sec:asmodeous}
+
+ASMODEOUS is not a committee of models. Each slot was filled by asking which candidate part does that one job best, and the winner was taken whichever parent it came from: PHASE-SPHERE gives the state, the charts and the topological readouts; OBSERVER-ATLAS gives laziness and gluing; the A.E.T.H.E.R.\ paper gives the adaptive measurement and the event clock; the CTC loop of the origin notes gives the observer its time-traveller. Every slot has a preregistered ablation that removes it at equal active FLOPs and equal parameters, so a win is credited to a slot only when that slot's ablation loses it.
+
+\input{figures/asmodeous}
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{@{}p{2.6cm}p{8.6cm}p{3.2cm}@{}}
+\toprule
+Slot & Part chosen & From \\
+\midrule
+state & $\psi=\mathrm{normalise}(E(o))\in\CP^{N-1}$; the phase is part of the state & PHASE-SPHERE \\
+observer & Parseval-frame POVM: rows $v_k$ of an isometry $V\in\C^{(K+1)\times N}$, $V^\dagger V=I$, one row for ``observe nothing'' & A.E.T.H.E.R., Born, Naimark \\
+charts & $z_k=V_k^\dagger\psi\,e^{-i\arg\alpha_k}$, gauge-fixed, computed only when read & PHASE-SPHERE \\
+laziness in $K$ & score $K{+}1$ effects, run the top-$m$ charts; their weights are exact & OBSERVER-ATLAS \\
+laziness in time & event trigger, adiabatic re-route, per-chart send-on-delta & A.E.T.H.E.R. \\
+gluing & learned gauge links $G_{jk}\in U(d_c)$ with a cocycle loss (a learned \v{C}ech cocycle) & origin, PHASE-SPHERE \\
+dynamics & $\hat z_k=\Cayley(X_k(a))\,z_k$, unitary & PHASE-SPHERE \\
+observer loop & damped fixed point (a contraction) with an amortised one-shot head & origin CTC \\
+readouts & nerve Betti over $\Zt$, Chern $c_1$ from $\psi$, holonomy $\det\prod G$ & both parents \\
+training & fidelity $1-\lvert\langle\hat\psi_{t+1},\psi^{\mathrm{tgt}}_{t+1}\rangle\rvert^2$; Haar test against collapse & origin, LeJEPA \\
+\bottomrule
+\end{tabular}
+\caption{ASMODEOUS slot by slot. The full rationale and the ablation for every row are in \texttt{ASMODEOUS.md}.}
+\end{table}
+
+\paragraph{The observer.} A $K\times N$ isometry with $K>N$ is a tight frame, so its rows already form a POVM with more outcomes than dimensions (Naimark), and every probability is exact:
+\begin{equation}\label{eq:parseval}
+p_k=\big\lvert\langle v_k,\psi\rangle\big\rvert^2,\qquad \sum_{k=0}^{K}p_k=\psi^\dagger V^\dagger V\psi=1,\qquad \gamma=1-p_\varnothing,
+\end{equation}
+where $v_k$ is row $k$ of $V$, $p_\varnothing$ is the probability of the ``observe nothing'' row and $\gamma$ is the gate. No partition function appears, so the weights of the top-$m$ read charts are the numbers the dense model would compute: laziness costs no approximation.
+
+\paragraph{The time-traveller.} Damping makes the self-consistency map a contraction,
+\begin{equation}\label{eq:damped}
+w\;\leftarrow\;(1-\varepsilon)\,D\big(P_h(z,w)\big)+\tfrac{\varepsilon}{M}\mathbf{1},\qquad \varepsilon>0,
+\end{equation}
+so the fixed point $w^\star$ exists, is unique, and is reached geometrically from any start. An amortised head is distilled to produce $w^\star$ in one pass, so the answer is available before the loop that defines it runs.
+
+\paragraph{Training on $\CP^{N-1}$.} The prediction loss is the fidelity $1-\lvert\langle\hat\psi_{t+1},\mathrm{sg}\,\psi^{\mathrm{tgt}}_{t+1}\rangle\rvert^2$, which is invariant to a global phase and lives on the space the state lives on. Anti-collapse compares sliced $\lvert\langle u,\psi\rangle\rvert^2$ to its Haar law $\mathrm{Beta}(1,N-1)$, the uniform reference on $\CP^{N-1}$.
+
+\paragraph{A control that may take a slot.} A single Hopf chart ($\psi\in S^3$ read by the Hopf map to $S^2$) is preregistered as a control with its own bar. If it covers $S^2$ without tearing, it becomes the ASMODEOUS chart for that space; a part that wins is kept.
+
+The primitives of Eqs.~\eqref{eq:parseval} and~\eqref{eq:damped} are test-bound (Section~\ref{sec:identities}); the full model is built test-first against its contract.
+
+% Results for ASMODEOUS: empty until VERDICT.md exists.
