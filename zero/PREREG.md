@@ -2162,3 +2162,109 @@ Filed 2026-10-04, before any PLAN item 5 result exists.
    - **Binding MAC function.** MAC(s̄) is `QFLM.active_macs(rounds=s̄+1)` in `qflm/model.py`, the code that runs.
      - Fact: that function gives 1,216,512 + 11,867,136·s. Cameron's table gives 1,123,840 + 11,682,304·s.
      - The function is 8.2% higher at s = 0 and 1.7% higher at s = 4. The table rows above are brackets only, and the re-match uses the function.
+
+## Amendment 8 (pre-result)
+Filed 2026-10-04, before any PLAN item 5 result exists.
+
+**Source.** Kutner's D1–D6, from `zero/plans/kutner.md` "## Difference" (house-events line 528). The direction is Seal's: "be as different from existing tech as possible".
+
+**Status rules for all D-variants.**
+- Every D-variant is a **reported** arm or readout.
+- The deciding item-5 comparison is unchanged: full-rank QF-LM against the param-matched GPT and GRU (Amendments 6 and 7).
+- Each D-arm reports params and MAC/token under Amendment 7's binding MAC convention (`active_macs` at measured rounds), plus its own flop-matched GPT via `match_lm`.
+- s_max = 4 (Amendment 6) applies to every D-arm.
+
+**Halting owner.** D1 and D6 move away from PonderNet (2107.05407) and ACT (1603.08983) (OWNERS.md rows 184, 185, 220).
+- M0 wiring smoke evidence (house-events line 526, Kutner): steps_per_token was constant at 3.0. Halting there was set by a flat p_null under the TAU rule (`qflm/model.py:7`, TAU = 1e-3).
+- At M0 the null-halting arm therefore behaved as a fixed-depth PonderNet with a constant halting probability.
+
+### D1: CTC fixed-point halting (first)
+**Definition.**
+- A think round iterates the self-consistency map F: p ↦ Born(U(p)ψ) on the simplex Δ^{V}, with the null outcome included. The think angles are a function of the anticipated outcome distribution p.
+- **Halting rule.** Halt at the first s with ‖p_{s+1} − p_s‖₁ < ε. If no s ≤ s_max satisfies it, the token emits at s_max and is recorded as non-halted.
+- **ε = 1e-4.** This is the TO2 residual threshold, so D1 and TO2 use one number.
+- The null outcome keeps its instrument role: it carries the probability that the loop has not closed.
+
+**Departs from.** PonderNet and ACT halt on a learned scalar. D1 halts on a convergence property of the state.
+
+**Bars.**
+- **Adaptive-compute bar (PLAN 5b):** Spearman(rounds run, token surprisal) ≥ 0.3 on val. The M0 null-halting value is undefined, since rounds were constant.
+- **Convergence (TO2, unchanged):** residual < 1e-4 within 20 iterations on ≥ 99% of eval tokens. This is measured as an eval-only diagnostic past s_max.
+
+**Kill.** Non-convergence on > 5% of eval tokens (TO2). A Spearman below 0.3 means the bar is not met, not a kill.
+
+**Fact (Wilson).** A small step residual does not bound the distance to the fixed point unless F is a contraction. If F is a contraction with rate ρ in the halting norm, then ‖p_s − p*‖₁ ≤ ‖p_{s+1} − p_s‖₁ / (1 − ρ). D1's halting is therefore certified only where D6 holds.
+
+### D6: certified halt (first)
+**Definition.** A token's halt is **certified** when ρ < 1 is established. ρ is an upper bound on the Lipschitz constant of F in the ℓ₁ norm, the norm of the halting test, over a convex set S that contains every iterate and that F maps into itself.
+- **Round bound.** On a certified token, rounds are at most ⌈log(ε / ‖p₁ − p₀‖₁) / log ρ⌉ + 1, which is at most ⌈log(ε/2) / log ρ⌉ + 1.
+  - Reason: ‖p_{s+1} − p_s‖₁ ≤ ρ^s ‖p₁ − p₀‖₁, and the ℓ₁ diameter of the simplex is 2.
+  - This refines Kutner's log(ε)/log(ρ) by the diameter factor.
+- **Uncertified tokens** run to s_max and are flagged. They are never silently emitted early.
+
+**What counts as a certificate.**
+- **Refinement of Kutner's wording.** σ_max of the Jacobian *at one point* (spectral norm, ℓ₂) is a local diagnostic, not a certificate.
+  - It is the wrong norm for an ℓ₁ halting test (‖x‖₁ ≤ √(V+1)·‖x‖₂).
+  - It says nothing about the iterates away from that point.
+- **Valid certificates:**
+  - **Global:** S = Δ^{V}. F maps it into itself because a Born output is a distribution. Banach's theorem then gives a unique p*.
+  - **Ball:** S = the ℓ₁ ball B(p_s, r) intersected with Δ^{V}, with a bound ρ on sup over S of ‖J_F‖_{1→1} (the max column abs sum), and ‖p_{s+1} − p_s‖₁ ≤ (1 − ρ) r.
+- The point value σ_max(J_F(p_s)) is reported alongside as a diagnostic.
+
+**Departs from.** Every halting owner halts on a threshold without a certificate. Prior art: aether-link/sigmoid `coupling.rs` contraction certificate (R-A5); Epsilon certify-or-refuse (R-E1).
+
+**Kill.** Fewer than 50% of M0 eval tokens certified.
+
+### D2: halt before start (TO3)
+**Definition.** A one-shot head predicts the D1 fixed point p* from ψ before any round runs. Rounds run only when the head's predicted residual exceeds ε.
+
+**Departs from.** ACT and PonderNet pay for every step up to the halt.
+
+**Bar (TO3).** Top-1 agreement with p* ≥ 95% at ≤ 1/5 of the loop's MACs.
+
+**Kill.** Agreement < 80%.
+
+### D3: observer-chosen measurement basis
+**Definition.** K_v(ψ) = diag(√M_v) · Q · B(|ψ|²). B is a butterfly whose angles are a function of |ψ|², applied at every round including round 0.
+
+**Facts (Wilson).**
+- **Completeness holds for each fixed ψ.** Σ_v K_v(ψ)† K_v(ψ) = B† Q† (Σ_v diag M_v) Q B = I, since Σ_v M_v = 1 elementwise. So Σ p = 1.
+- **The map is not linear in ψ.** It is therefore not a quantum instrument in the CP-map sense.
+- **The instrument bound survives.** For every ψ, ‖K_v(ψ)ψ‖² ≤ max_i M_v[i], so Σ_v max_ψ ‖K_v(ψ)ψ‖² ≤ N, and at most 2N tokens can reach p ≥ ½ (`ref/instrument_check.py` bound, Amendment 3).
+
+**Departs from.** MPS, HQMMs and 1711.01416 all use a fixed linear set of Kraus operators. Prior art: PRIOR_QUANTUM_NOTES L-Q1; aether-link R-A1.
+
+**Control.** A fixed-basis arm (B = I) at equal MAC/token.
+
+**Kill.** D3 within 1% relative val perplexity of the fixed-basis arm.
+
+### D4: chaos plus a stable readout (TO4)
+**Measure.**
+- **λ₁:** the finite-time largest Lyapunov exponent of the think map ψ ↦ think(ψ) over the think rounds. It is computed from Jacobian-vector products restricted to the tangent space of the unit sphere (perturbations orthogonal to ψ and renormalised), on real tokens.
+- **Flip rate:** the argmax-token flip rate under ψ perturbations of ℓ₂ size 1e-3, renormalised.
+
+**Fact (Wilson).** A unitary at fixed angles is an isometry, so its λ₁ = 0 exactly. Any λ₁ > 0 must come from the ψ-dependence of the angles: in `qflm/model.py:92-100` the angles are A·|ψ|² plus θ0. The `nothink` arm (fixed zero angles) is the λ₁ = 0 control.
+
+**Departs from.** Unitary RNNs target λ = 0.
+
+**Bar.** λ₁ > 0 and flip rate < 1%.
+
+**Kill (TO4).** λ₁ ≤ 0, or flip rate ≥ 5%.
+
+### D5: phase as time (readout only, not a training signal)
+**Measure.** The Bargmann invariant of each think loop of a halted token:
+γ = arg(⟨ψ₀|ψ₁⟩⟨ψ₁|ψ₂⟩ ⋯ ⟨ψ_{n−1}|ψ_n⟩⟨ψ_n|ψ₀⟩), reported next to the rounds n.
+
+**Fact and refinement (Wilson).** Kutner's open sum Σ_s arg⟨ψ_s|ψ_{s+1}⟩ changes by α_n − α₀ under ψ_s → e^{iα_s} ψ_s. QF-LM's p(v) depends only on |·|², so that open sum is not a model observable. The closing factor ⟨ψ_n|ψ₀⟩ makes γ gauge-invariant.
+
+**Prediction.** γ on halted tokens concentrates near multiples of π (the π law, ORIGIN O6).
+
+**Control.** The shuffled-pair control of H3.
+
+**Bar.** KS p ≤ 0.05 against the control, and the median circular distance of γ to πℤ is below the control's median.
+
+**Kill.** KS p > 0.05.
+
+**Departs from.** No owner; the readout is unowned.
+
+**Order.** D1 and D6 are built first, RED-first (Kutner plan step 6). D3 joins step 4; D4 and D5 join step 8.
