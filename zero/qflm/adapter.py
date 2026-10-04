@@ -11,12 +11,12 @@ KINDS = {"quantum": QFLM, "dephased": DephasedQFLM, "real": RealQFLM}
 
 
 class QF(torch.nn.Module):
-    def __init__(self, vocab, d, N=None, arm="qflm", s_max=4, seed=0, kind="quantum", fixed_k=None):
+    def __init__(self, vocab, d, N=None, arm="qflm", s_max=4, seed=0, kind="quantum", fixed_k=None, think_rank=None):
         super().__init__()
         N = N or d
         assert N & (N - 1) == 0, "N must be a power of 2"
         self.fixed_k = fixed_k                                    # None = adaptive; read at forward time
-        self.m = KINDS[kind](N, vocab, s_max=s_max, arm=arm, seed=seed)
+        self.m = KINDS[kind](N, vocab, s_max=s_max, arm=arm, seed=seed, think_rank=think_rank)
 
     def _flops(self, steps):
         return 2 * self.m.active_macs(rounds=steps + 1)          # FLOPs = 2 MACs; MAC model is Kutner's

@@ -228,3 +228,16 @@ def test_dephased_model_never_falls_through_to_quantum_forward():
         assert not d.psi.is_complex() and (d.psi >= 0).all() and torch.allclose(d.psi.sum(), torch.tensor(1.0), atol=1e-5)
         with pytest.raises(NotImplementedError):                              # a control, not a talker
             d.generate(3)
+
+
+def test_think_rank_passthrough_r16_arm():
+    """Amendment 7 r16 reported arm: think_rank reaches QFLM; params and MACs follow Kutner's low-rank count."""
+    NN = 32
+    full, r = QF(vocab=V, d=NN, seed=0), QF(vocab=V, d=NN, seed=0, think_rank=16)
+    assert r.m.think_rank == 16 and full.m.think_rank is None
+    assert r.n_params() < full.n_params()
+    assert r.active_flops_per_token() == 2 * r.m.active_macs(worst_case=True) < full.active_flops_per_token()
+    x = toks()
+    out = r(x)
+    assert torch.allclose(out["nll"].mean(), r.m(x), atol=1e-5)                 # mirror holds for r16
+    assert torch.allclose(out["flops"], 2 * r.m.active_macs(rounds=out["steps"] + 1))
