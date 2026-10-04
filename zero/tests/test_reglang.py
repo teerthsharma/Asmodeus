@@ -1,4 +1,6 @@
+import hashlib
 import itertools
+import json
 import math
 import os
 import sys
@@ -195,6 +197,7 @@ def _fake_tune(monkeypatch, tmp_path, val_by_lr):
         return [[0, 2]]
 
     monkeypatch.setattr(rr, "load_split", split)
+    monkeypatch.setattr(rr, "clean_sha", lambda cwd=None, ignore=(): "abc123")
     monkeypatch.setattr(rr, "build", lambda arm, N, seed: ("m", seed))
     monkeypatch.setattr(rr, "kind_of", lambda m: "lm")
     cur = {}
@@ -234,8 +237,48 @@ def test_smoke_build_train(arm, N):
     assert math.isfinite(e)
 
 
-def test_dephased_pending_or_builds():
-    try:
-        rr.build("dephased", 16, 0)
-    except NotImplementedError as e:
-        assert "PENDING" in str(e)
+def test_dephased_builds_and_is_not_quantum_path():
+    from qflm.controls import DephasedQFLM
+    from qflm.model import QFLM
+    d = rr.build("dephased", 16, 0)
+    assert isinstance(d, DephasedQFLM)
+    q = QFLM(16, 3, seed=0)
+    q.load_state_dict(d.state_dict(), strict=False)
+    pool = rl.sample("dyck4", 400, 0, max_len=12)
+    L = max({len(s) for s in pool}, key=lambda n: sum(len(s) == n for s in pool))
+    seqs = [s for s in pool if len(s) == L][:4]
+    assert len(seqs) == 4
+    x = torch.tensor(seqs)
+    with torch.no_grad():
+        assert abs(d(x).item() - q(x).item()) > 1e-6
+
+
+def test_tune_stamps_sha_and_code_hash(monkeypatch, tmp_path):
+    _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
+    rr.tune("gru", 0, "parity", 3, 8)
+    rec = json.loads((tmp_path / "tune" / "gru_N0_parity.json").read_text())
+    assert rec["sha"] == "abc123"
+    h = hashlib.sha256()
+    for f in ("run_reglang.py", "qflm/model.py", "qflm/controls.py", "beds/reglang.py"):
+        h.update((rr.ZERO / f).read_bytes())
+    assert rec["code_hash"] == h.hexdigest()
+
+
+def test_tune_refuses_dirty_tree(monkeypatch, tmp_path):
+    _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
+
+    def dirty(cwd=None, ignore=()):
+        raise SystemExit("refusing: dirty tree")
+
+    monkeypatch.setattr(rr, "clean_sha", dirty)
+    with pytest.raises(SystemExit):
+        rr.tune("gru", 0, "parity", 3, 8)
+    assert not (tmp_path / "tune").exists()
+
+
+def test_run_job_rejects_tune_sha_mismatch(monkeypatch, tmp_path):
+    _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
+    rr.tune("gru", 0, "parity", 3, 8)
+    job = dict(lang="parity", arm="gru", N=0, seed=0, key="k", path=tmp_path / "k.json")
+    with pytest.raises(Exception, match="sha"):
+        rr.run_job(job, "other_sha", steps=1)

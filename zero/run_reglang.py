@@ -9,6 +9,8 @@ run_job reads the tuned lr from the cache and raises if missing, so eval cannot 
 Writes runs/reglang/<lang>__<arm>__s<seed>.json atomically; existing files are skipped (resumable).
 """
 import argparse
+import hashlib
+import inspect
 import json
 import math
 import os
@@ -56,8 +58,10 @@ def build(arm, N, seed):
             from qflm.controls import DephasedQFLM
         except ImportError:
             raise NotImplementedError("PENDING: qflm/controls.py")
-        if "forward" not in vars(DephasedQFLM):  # controls.py in flux: inherited forward would be the quantum path
-            raise NotImplementedError("PENDING: qflm/controls.py (DephasedQFLM has no forward)")
+        from qflm.model import QFLM
+        # forward -> _run -> self._emit: an own _emit override is what keeps the quantum path out
+        if "_emit" not in vars(DephasedQFLM) or "self._emit" not in inspect.getsource(QFLM._run):
+            raise NotImplementedError("PENDING: qflm/controls.py (DephasedQFLM does not override the _emit path)")
         return DephasedQFLM(N, 3, seed=seed)
     raise KeyError(arm)
 
@@ -160,8 +164,21 @@ def _atomic_json(path, rec):
     os.replace(tmp, path)
 
 
+def code_hash():
+    h = hashlib.sha256()
+    for f in ("run_reglang.py", "qflm/model.py", "qflm/controls.py", "beds/reglang.py"):
+        h.update((ZERO / f).read_bytes())
+    return h.hexdigest()
+
+
+def ignore_list(out):
+    out = Path(out).resolve()
+    return ["house-events.jsonl"] + ([os.path.relpath(out, ZERO)] if out.is_relative_to(ZERO) else [])
+
+
 def tune(arm, N, lang, steps, batch):
     """Pick the lr from LR_GRID with the lowest VAL excess on TUNE_SEED; never loads the test split."""
+    sha = clean_sha(ZERO, ignore_list(OUT))
     tr, va = load_split(lang, "train"), load_split(lang, "val")
     val = {}
     for lr in LR_GRID:
@@ -169,7 +186,7 @@ def tune(arm, N, lang, steps, batch):
         val[lr] = float(excess(m, kind_of(m), lang, va))
     best = min(LR_GRID, key=lambda lr: (val[lr], lr))  # ties -> smaller lr
     _atomic_json(tune_path(arm, N, lang), dict(arm=arm, N=N, lang=lang, seed=TUNE_SEED, steps=steps, batch=batch,
-                                              lr=best, val_excess={str(k): v for k, v in val.items()}))
+                                              lr=best, sha=sha, code_hash=code_hash(), val_excess={str(k): v for k, v in val.items()}))
     return best
 
 
@@ -188,6 +205,9 @@ def require_amendment():
 def run_job(job, sha, steps=5000, batch=64):
     lang, seed = job["lang"], job["seed"]
     lr = tuned_lr(job["arm"], job["N"], lang)  # raises before any training if untuned
+    tsha = json.loads(tune_path(job["arm"], job["N"], lang).read_text()).get("sha")
+    if tsha != sha:
+        raise RuntimeError(f"tune record sha {tsha} != eval sha {sha}: re-run --tune on this commit")
     tr, va, te = (load_split(lang, w) for w in ("train", "val", "test"))
     m = train(build(job["arm"], job["N"], seed), lang, tr, steps, lr, batch, seed)
     k = kind_of(m)
@@ -245,8 +265,7 @@ def main(argv=None):
         for key, lr in results:
             print(key, f"lr={lr}", flush=True)
         return
-    ign = ["house-events.jsonl"] + ([os.path.relpath(out, ZERO)] if out.is_relative_to(ZERO) else [])
-    sha = clean_sha(ZERO, ign)
+    sha = clean_sha(ZERO, ignore_list(out))
     args = [(j, sha, a.steps, threads) for j in todo]
     results = map(_worker, args) if a.procs == 1 else ProcessPoolExecutor(a.procs).map(_worker, args)
     for key, rec in results:
