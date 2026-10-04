@@ -2071,3 +2071,42 @@ Filed 2026-10-04, before any PLAN item 5 result exists. It pins Park's NLL-savin
   - If the CI lower bound is > ln N nats (Amendment 3 threshold), move to the N-scaling or mixed-state variant before item 5.
   - Otherwise item 5 proceeds at the pinned N.
   - This changes sizes only, never a bar.
+
+## Amendment 5 (pre-result)
+Filed 2026-10-04, before any arm has run on these beds. Source: Thirteen, `zero/plans/amendment3_draft.md`, which is copied there in full. **It supersedes Amendment 3's MM-QFA kill-test bars.** Amendment 3's H3 and Holevo items stand.
+
+- **Sources.**
+  - [V, PDF text read by Wilson] arXiv quant-ph/0009004 (Ambainis, Kikusts, Valdats), Theorem 1.1, citing Kondacs–Watrous 1997:
+    - "All languages recognized by 1-way QFAs are regular";
+    - there is a regular language that cannot be recognised by a 1-way QFA with probability ½ + ε.
+  - Theorem 1.2 (Brodsky–Pippenger 1999), same paper: the minimal-DFA forbidden construction rules out recognition by a measure-many 1-way QFA.
+  - [V, Thirteen] arXiv quant-ph/9802062 (Ambainis–Freivalds), Theorem 2 and Corollary 4: above correctness 7/9, 1-way QFAs equal 1-way reversible automata; a*b* is recognised only with probability ≈ 0.68.
+  - The Kondacs–Watrous 1997 primary PDF was **not** obtained; it is cited at second hand only.
+  - These proofs use linearity and unitarity. QF-LM's renormalised Kraus update, √-weighted null records and ψ-dependent think need not obey them, so the test decides empirically.
+- **Bed** (`beds/reglang.py`). Alphabet {a, b} with BOS/EOS, exact true log-probabilities, length cap 64, train/val/test 20k/2k/2k from generator seeds 0/1/2, data hash pinned. Generators as in the draft's table:
+  - **parity**: control only;
+  - decisive **last-a** = (a+b)*a;
+  - decisive **a\*b\***;
+  - decisive **k-gap, k = 3**;
+  - decisive **Dyck-1 at depth ≤ 4**.
+- **Arms.** All at equal budgets, 3 seeds, tuning seed 3; Adam, 5,000 steps, batch 64; one learning rate per arm from {1e-3, 3e-3, 1e-2} on seed 3.
+  - **Deciding:**
+    - QF-LM at N ∈ {8, 16, 32};
+    - QF-LM + W_v (below);
+    - dephased-HMM, which joins when `qflm/controls.py` exists and is NOT RUNNABLE until then;
+    - GRU (hidden 16).
+  - **Reported only:** GPT (2 layers, d = 32), QF-LM nothink, QF-LM nonull.
+- **Honest +embed arm (Kutner, `zero/plans/kutner.md` items 2, 3).**
+  - Under K_v = diag(√M_v)Q = Q·√F_v, every token shares W = Q.
+  - The "+embed" arm is therefore **K_v = W_v diag(√M_v) Q**, with W_v a token-dependent unitary (low-rank butterfly per token). p(v) is unchanged; only the write differs.
+  - This replaces `nn.Embedding` as the +embed arm here and in item 5's criterion (a).
+- **Metric.** Excess entropy ε = (Σ model NLL − Σ true NLL) / (number of scored symbols), in bits per symbol, on the test split. Every arm is scored on the same positions after BOS, including EOS. QF-LM also scores the BOS-predicted first position; this bias against QF-LM is recorded.
+- **Bars and kills.**
+  - **Pass** on a language: ε ≤ 0.02 bits/symbol on ≥ 2/3 seeds.
+  - **Validity:** the GRU must pass a language, or that language is VOID for every arm.
+  - **QF-LM fails** a language: ε > 0.05 on ≥ 2/3 seeds at every N ∈ {8, 16, 32}, while the GRU passes.
+  - **Kill (write = read):** QF-LM fails any of last-a, a\*b\*, k-gap or Dyck-1. Verdict line: "write = read is dead on regular languages, or needs a classical register".
+    - If +W_v passes where QF-LM fails, the missing piece is the write path.
+    - If dephased-HMM passes, coherence hurts.
+  - **Survive:** QF-LM passes all four decisive languages at some N ≤ 32.
+  - Parity failure is reported as an optimisation failure, never as a capacity verdict.
