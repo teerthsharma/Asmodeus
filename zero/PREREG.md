@@ -2010,3 +2010,19 @@ Talk-rubric rules for PLAN item 5 (Adams, `zero/plans/adams.md` step 1). Filed 2
 - **Null control.** GPT vs GPT with a different seed must tie under the same rule. Otherwise the rule is void.
 - **Reported:** rater side-guessing (can raters tell which model wrote a sample) and train-text overlap of the samples.
 - **Wording.** No "talks like a person" wording in any verdict or report.
+
+## Amendment 2 (pre-result)
+Filed 2026-10-04, before any PLAN item 5 result exists. It changes PLAN item 5's "new" criteria and adds two pins.
+- **Criterion (c) replaced.** "Memory flat in context length" is true by construction for QF-LM (the state is one ψ ∈ C^N) and equally true of the GRU baseline, so it cannot show newness.
+  - It is replaced by Adams's **recall-vs-distance curve**: recall of a fact as a function of the token distance since it was stated, for QF-LM vs GPT vs GRU, same beds and seeds.
+  - It is reported as a measurement, with no bar. "New" now requires (a) and (b) only.
+- **Criterion (b) tightened (Adams).** Think steps are credited only if forcing s = 0 (no think steps) raises val loss. This is in addition to the existing Spearman ≥ 0.3 and adaptive-beats-fixed conditions. If forcing s = 0 does not raise val loss, (b) fails.
+- **Completeness bar for the instrument (Chase).** |Σ_v p(v) + p_null − 1| ≤ 1e-6 in float64 and ≤ 1e-5 in fp32, every step. This replaces the single "± 1e-6" of PLAN item 3 for fp32 runs.
+- **TO7 control row (Cameron).** The owned w₁-Jacobian baseline (`arms/w1_jacobian.py`: sign of learned chart-transition Jacobians multiplied along loops, after arXiv 2602.22873; contracts in `tests/test_w1_jacobian.py`) is scored on the same held-out loops. Bar and per-class aggregation are as TO7. A candidate part's TO7 pass is credited only if it is at least as accurate as this control on every loop class.
+- **Coherence controls (Foreman's finding).**
+  - QF-LM's per-step head is classical: the effects K_v†K_v = Q†diag(M_v)Q all commute. Wilson verified this: `tests/test_facts.py::test_diag_q_head_effects_commute`, commutators < 1e-12. Any gain must therefore come from coherence carried across steps.
+  - Two deciding control arms are added to item 5, at equal FLOPs and the same seeds:
+    - **dephased-HMM**: ψ dephased to the diagonal (Q basis) each step;
+    - **real-ψ**: the state is restricted to real amplitudes.
+  - **"New" additionally requires** QF-LM to beat the dephased-HMM arm by > 2% val perplexity on ≥ 2/3 seeds.
+- **Fact for the record (Wilson, OWNERS.md §F).** arXiv 1711.01416 (Pestun, Terilla, Vlassopoulos 2017) owns "write = read" on language in formalism: the word is a measurement operator and the phrase is the operator product. So criterion (a) measures whether write = read pays; it does not make write = read new.

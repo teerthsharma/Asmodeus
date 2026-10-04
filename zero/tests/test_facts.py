@@ -346,3 +346,14 @@ def test_plan_diag_q_head_bound_and_talk_threshold():
         assert is_complete(K)
         assert instrument_max_mass(K) <= N + 1e-9
         assert tokens_reachable(K, 0.5) <= 2 * N < V     # N = 16 or 64 cannot make most of |V| = 4096 likely
+
+
+def test_diag_q_head_effects_commute():
+    """Foreman's finding (Amendment 2): effects E_v = K_v^H K_v = Q^H diag(M_v) Q all commute, so a single-step
+    readout of this head is classical; any quantum advantage must come from coherence carried across steps."""
+    rng = np.random.default_rng(5)
+    K = diag_q_instrument(8, 50, rng)
+    E = [K[v].conj().T @ K[v] for v in range(len(K))]
+    assert max(np.abs(a @ b - b @ a).max() for a in E[:10] for b in E[:10]) < 1e-12
+    d = K.Q @ E[3] @ K.Q.conj().T                       # diagonal in the Q basis
+    assert np.abs(d - np.diag(np.diag(d))).max() < 1e-12

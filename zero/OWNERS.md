@@ -193,7 +193,9 @@ Limits: WebSearch snippets plus the arXiv API only; IDs without ✓ were verifie
 
 ## F. QF-LM owner hunt (PLAN.md; Wilson 2026-10-04)
 
-**Full combination owned? NO.** No located work combines all six components:
+**Full combination owned? NO.** But the core mechanism (2)+(3), "measure to remember" on natural language, IS owned in formalism by Pestun–Terilla–Vlassopoulos 2017 (row below; body read by Wilson). The unowned parts are (4) input-free butterfly unitaries, (5) the null / think outcome with likelihood summed over null records, and (6) training at LM scale with reported results.
+
+No located work combines all six components:
 1. state ψ ∈ C^N;
 2. token = outcome of a complete instrument, p(v) = ‖K_vψ‖², no softmax;
 3. Lüders back-action as the only input path (no embedding);
@@ -205,6 +207,7 @@ Limits: WebSearch snippets plus the arXiv API only; IDs without ✓ were verifie
 
 | Owner | ID | Owns | Does NOT do |
 |---|---|---|---|
+| **Language as a matrix product state (Pestun, Terilla, Vlassopoulos 2017)** | 1711.01416 ✓ (PDF body read) | **(2)+(3) in formalism, on natural language.** Each word w_i maps to a d×d complex matrix M_i ("dictionary"). A phrase maps to the product M_{i1}⋯M_{ik}, with q(x) = tr(P_L M_x P_R M_x†) (§2.2). Under Σ M_i†M_i = I the M_i "can be interpreted as a collection of n measurement operators" (§4). The word matrix both scores the word (Born-type trace density) and transforms the state for the next word: the same operator writes and reads, with no separate input embedding. | Mixed-state trace density, not an explicitly normalised pure-state Lüders filter. **No null outcome, halting or adaptive think steps** (body grep: none). No butterfly or input-free unitary between words. **No experiments:** fitting by maximum likelihood is described only as possible (§5, ref. [18]); no corpus results, tables or figures in this paper. |
 | Hidden Quantum Markov Models (Monras, Beige, Wiesner 2010) | 1002.2337 ✓ | (2)+(3) in substance: a sequence generator from "stochastic quantum operations" (Kraus instruments) on a quantum state; outputs are measurement outcomes, and each outcome updates the state | (4), (5), (6); no complex-N LM training at scale |
 | Learning HQMMs (Srinivasan, Gordon, Boots 2018) | 1710.09016 ✓ | the learning algorithm for HQMMs (Kraus-operator sequence models) | evaluated "using several synthetic datasets"; (4), (5), (6) |
 | uRNN (Arjovsky, Shah, Bengio 2016) | 1511.06464 ✓ | complex hidden state with unitary recurrence composed of structured factors | input embedding; softmax/linear readout; no measurement back-action; (5) |
@@ -216,6 +219,9 @@ Limits: WebSearch snippets plus the arXiv API only; IDs without ✓ were verifie
 | Pause tokens (Goyal et al. 2023) | 2310.02226 ✓ | inserted "thinking" steps before output | "we do not apply a loss ... to predict these tokens"; no marginalisation over null records |
 | PonderNet / ACT | 2107.05407 ✓ / 1603.08983 ✓ | loss summed over a halting-step distribution / learned step count | not a sum over null measurement records; not an instrument |
 
-**Closest owner of the core mechanism ("measure to remember").** Hidden Quantum Markov Models: outcomes are Kraus-instrument measurements and the observation updates the state. QF-LM's unclaimed parts are therefore (4) + (5) + (6) and the combination at LM scale. Item 5's +embed ablation tests (3) against an embedding path.
+**Closest owners of the core mechanism ("measure to remember").**
+- Pestun–Terilla–Vlassopoulos 2017 (1711.01416): word = measurement operator; the phrase is the operator product, i.e. write = read, on natural language, in formalism, with no experiments.
+- Hidden Quantum Markov Models (1002.2337, 1710.09016): Kraus-instrument outputs update the state; synthetic data only.
+- QF-LM's unclaimed parts are (4) input-free butterfly thinking, (5) the null outcome / think-likelihood sum, and (6) a trained LM-scale result. Criterion (a), the +embed ablation, tests whether write = read pays; it does not establish that write = read is new.
 
 **Not run** (nurses stopped by the user): searches for "measurement-based language model", "Lüders update RNN", "instrument language model" and quantum filtering LMs, beyond nurse 36's three searches. Nurse 36 found no paper combining a no-embedding model, a Lüders back-action update and a Kraus-instrument token readout. Coverage is partial.
