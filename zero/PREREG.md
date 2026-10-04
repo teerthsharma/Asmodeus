@@ -2059,3 +2059,15 @@ Filed 2026-10-04, before any PLAN item 5 result exists. It adds two pre-checks a
   - **Fact check on the threshold.** The relevant per-document cap for a pure state in C^N with no shared entanglement is **ln N nats**, not 2·ln N. The factor 2 belongs to entanglement-assisted (superdense) coding, which QF-LM does not have.
     - The threshold is therefore pinned at **ln N nats**, which is stricter than 2·ln N.
     - Park's exact definition of the "NLL saving" (per document vs per token, which model, which cut) is **NOT RUNNABLE until a pre-result amendment** pins it.
+
+## Amendment 4 (pre-result)
+Filed 2026-10-04, before any PLAN item 5 result exists. It pins Park's NLL-saving definition. This closes the open cell "Park's exact definition of the NLL saving" in Amendment 3, so the Holevo pre-check is runnable.
+- **Data:** 200 TinyStories validation documents, BPE-4096 tokenizer, each truncated to 256 tokens. Split at L = 128: the first half is tokens 1–128, the second half tokens 129–256.
+- **Model:** the GPT arm.
+- **Statistic per document d,** in nats, summed over the 128 second-half tokens:
+  S_d = NLL(second half | fresh context, no first half) − NLL(second half | first half in context).
+- **Uncertainty:** bootstrap confidence interval of the mean S_d, resampling over documents.
+- **Rule:**
+  - If the CI lower bound is > ln N nats (Amendment 3 threshold), move to the N-scaling or mixed-state variant before item 5.
+  - Otherwise item 5 proceeds at the pinned N.
+  - This changes sizes only, never a bar.
