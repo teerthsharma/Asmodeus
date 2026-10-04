@@ -165,11 +165,11 @@ where $K$ is the number of charts, $m\ll K$ the number observed, and $C_{\text{c
 
 ### 3.5 How many charts does a manifold need?
 
-No single chart covers a closed manifold without tearing (invariance of domain). With $\operatorname{cat}$ the Lusternik–Schnirelmann category and $\operatorname{atlas}(M)$ the least number of ball charts that cover $M$:
+No single chart covers a closed manifold without tearing (invariance of domain). With $\mathrm{cat}$ the Lusternik–Schnirelmann category and $\mathrm{atlas}(M)$ the least number of ball charts that cover $M$:
 
-$$\operatorname{cat}(M)+1\;\le\;\operatorname{atlas}(M)\;\le\;n+1,\qquad n=\dim M$$
+$$\mathrm{cat}(M)+1\;\le\;\mathrm{atlas}(M)\;\le\;n+1,\qquad n=\dim M$$
 
-By these bounds the sphere $S^n$ needs 2 charts, the torus $T^2$ and the Klein bottle need 3, and $SO(3)\cong\mathbb{RP}^3$ needs 4. The atlas stops tearing at $K=\operatorname{atlas}(M)$, and not before. A rotation in $SO(3)$ has no continuous representation in four Euclidean dimensions or fewer, while five or six suffice, which is why the charts are glued into a space of higher dimension than their own.
+By these bounds the sphere $S^n$ needs 2 charts, the torus $T^2$ and the Klein bottle need 3, and $SO(3)\cong\mathbb{RP}^3$ needs 4. The atlas stops tearing at $K=\mathrm{atlas}(M)$, and not before. A rotation in $SO(3)$ has no continuous representation in four Euclidean dimensions or fewer, while five or six suffice, which is why the charts are glued into a space of higher dimension than their own.
 
 ### 3.6 The nerve of the observer and its Betti numbers
 
@@ -334,7 +334,7 @@ Each claim of the project is a question put to a measurement. The beds, the bars
 |---|---|
 | **T0** reproduce | Does `ref/identities.py` reproduce its pinned output? |
 | **T1** owner hunt | Is the full combination already owned? Every owned part is cited and used as a baseline. |
-| **T2** geometry (C1, C2) | On the sphere, torus, Klein bottle and $SO(3)$, with no manifold, chart or state ever given, does the atlas stop tearing at exactly $K=\operatorname{atlas}(M)$ with charts of the manifold's own dimension, and does the nerve recover the true Betti numbers online? A neutral flat bed runs beside them. |
+| **T2** geometry (C1, C2) | On the sphere, torus, Klein bottle and $SO(3)$, with no manifold, chart or state ever given, does the atlas stop tearing at exactly $K=\mathrm{atlas}(M)$ with charts of the manifold's own dimension, and does the nerve recover the true Betti numbers online? A neutral flat bed runs beside them. |
 | **T3** lazy scaling (C3) | At fixed active compute, does loss fall as the number of charts $K$ grows, below a dense JEPA and below one JEPA with PEER experts? Does lazy top-$m$ stay within tolerance of the soft mixture over all $K$? |
 | **T4** collapse (C4) | With the anti-collapse regulariser weakened or removed, does observer competition keep the representation from collapsing? Does the atlas match MoP-JEPA on mode collapse on OGBench pointmaze-stitch? |
 | **T5** time-traveller (C5) | Does reading predicted futures before committing beat owned latent MPC at equal planning compute, on MuJoCo swing-up and OGBench pointmaze? |
