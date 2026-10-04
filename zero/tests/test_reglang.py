@@ -172,9 +172,11 @@ def test_refuses_without_amendment5(tmp_path, monkeypatch):
 def test_dry_run_grid(capsys, tmp_path):
     rr.main(["--dry-run", "--out", str(tmp_path / "o")])
     out = capsys.readouterr().out
-    assert len([l for l in out.splitlines() if l.startswith(("todo ", "done "))]) == 5 * (4 * 3 + 3) * 3
-    assert len([l for l in out.splitlines() if l.startswith(("tune-todo ", "tune-done "))]) == 5 * (4 * 3 + 3)
-    assert len(rr.plan(rr.LANGS, rr.ARMS, (0, 1, 2), tmp_path)) == 225
+    assert len([l for l in out.splitlines() if l.startswith(("todo ", "done "))]) == 195
+    assert len([l for l in out.splitlines() if l.startswith(("tune-todo ", "tune-done "))]) == 35
+    assert "reuses qflm" in out and "nothink" in out
+    assert len(rr.plan(rr.LANGS, rr.ARMS, (0, 1, 2), tmp_path)) == 195
+    assert not [a for a in rr.ARMS if a[0] == "embed" and a[1] != 16]
     with pytest.raises(SystemExit):
         rr.main(["--dry-run", "--procs", "4"])
 
@@ -208,7 +210,7 @@ def _fake_tune(monkeypatch, tmp_path, val_by_lr):
 
 def test_tune_picks_min_val_excess(monkeypatch, tmp_path):
     seen, cur = _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
-    assert rr.tune("gru", 0, "parity", 3, 8) == 3e-3
+    assert rr.tune("gru", 0, "parity", 8) == 3e-3
     assert cur["seed"] == rr.TUNE_SEED == 3
     assert "test" not in seen
     assert rr.tuned_lr("gru", 0, "parity") == 3e-3
@@ -217,7 +219,7 @@ def test_tune_picks_min_val_excess(monkeypatch, tmp_path):
 
 def test_tune_tie_prefers_smaller_lr(monkeypatch, tmp_path):
     _fake_tune(monkeypatch, tmp_path, {1e-3: 0.2, 3e-3: 0.1, 1e-2: 0.1})
-    assert rr.tune("gru", 0, "parity", 3, 8) == 3e-3
+    assert rr.tune("gru", 0, "parity", 8) == 3e-3
 
 
 def test_run_job_requires_tune_cache(monkeypatch, tmp_path):
@@ -255,7 +257,7 @@ def test_dephased_builds_and_is_not_quantum_path():
 
 def test_tune_stamps_sha_and_code_hash(monkeypatch, tmp_path):
     _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
-    rr.tune("gru", 0, "parity", 3, 8)
+    rr.tune("gru", 0, "parity", 8)
     rec = json.loads((tmp_path / "tune" / "gru_N0_parity.json").read_text())
     assert rec["sha"] == "abc123"
     h = hashlib.sha256()
@@ -272,13 +274,49 @@ def test_tune_refuses_dirty_tree(monkeypatch, tmp_path):
 
     monkeypatch.setattr(rr, "clean_sha", dirty)
     with pytest.raises(SystemExit):
-        rr.tune("gru", 0, "parity", 3, 8)
+        rr.tune("gru", 0, "parity", 8)
     assert not (tmp_path / "tune").exists()
 
 
 def test_run_job_rejects_tune_sha_mismatch(monkeypatch, tmp_path):
     _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
-    rr.tune("gru", 0, "parity", 3, 8)
+    rr.tune("gru", 0, "parity", 8)
     job = dict(lang="parity", arm="gru", N=0, seed=0, key="k", path=tmp_path / "k.json")
     with pytest.raises(Exception, match="sha"):
         rr.run_job(job, "other_sha", steps=1)
+
+
+def test_tune_uses_tune_steps_not_eval_steps(monkeypatch, tmp_path):
+    _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
+    got = []
+    monkeypatch.setattr(rr, "train", lambda m, lang, tr, steps, lr, batch, seed: (got.append(steps), m)[1])
+    monkeypatch.setattr(rr, "excess", lambda m, kind, lang, seqs, max_len=64: 0.1)
+    rr.tune("gru", 0, "parity", 8)
+    assert rr.TUNE_STEPS == 1000 and got == [1000] * 3
+    assert json.loads((tmp_path / "tune" / "gru_N0_parity.json").read_text())["steps"] == 1000
+
+
+def test_nothink_nonull_reuse_qflm_lr(monkeypatch, tmp_path):
+    _fake_tune(monkeypatch, tmp_path, {1e-3: 0.5, 3e-3: 0.1, 1e-2: 0.3})
+    with pytest.raises(FileNotFoundError):
+        rr.tuned_lr("nothink", 8, "parity")
+    rr.tune("qflm", 8, "parity", 8)
+    for a in ("nothink", "nonull"):
+        assert rr.tuned_lr(a, 8, "parity") == rr.tuned_lr("qflm", 8, "parity") == 3e-3
+    assert not [j for j in rr.tune_plan(rr.LANGS, rr.ARMS) if j["arm"] in ("nothink", "nonull")]
+
+
+def test_amendment9_gates_qf_arms(monkeypatch, tmp_path):
+    p = tmp_path / "PREREG.md"
+    p.write_text("# PREREG\n## Amendment 5 (pre-result)\n")
+    monkeypatch.setattr(rr, "PREREG", p)
+    ran = []
+    monkeypatch.setattr(rr, "_tune_worker", lambda a: (ran.append(a[0]["arm"]), (a[0]["key"], 0.0))[1])
+    base = ["--tune", "--langs", "parity", "--out", str(tmp_path / "o")]
+    with pytest.raises(SystemExit):
+        rr.main(base + ["--arms", "qflm"])
+    rr.main(base + ["--arms", "gru"])
+    assert ran == ["gru"]
+    p.write_text("# PREREG\n## Amendment 5 (pre-result)\n## Amendment 9 (pre-result)\n")
+    rr.main(base + ["--arms", "qflm"])
+    assert "qflm" in ran

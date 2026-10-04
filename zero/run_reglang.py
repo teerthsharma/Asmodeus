@@ -1,10 +1,12 @@
 """Regular-language capacity test (PREREG Amendment 5): langs x arms x seeds, excess entropy in bits/symbol.
 
-Refuses to run any arm (eval or --tune) unless PREREG.md has the exact heading line "## Amendment 5 (pre-result)"
-(--dry-run always works).
+Refuses to run any arm (eval or --tune) unless PREREG.md has the exact heading line "## Amendment 5 (pre-result)";
+QF_ARMS jobs (qflm, embed, nothink, nonull, dephased) also need "## Amendment 9 (pre-result)" (--dry-run always works).
 Per-arm lr tuning, on tuning seed TUNE_SEED=3 only: for each (arm, N, lang), one model per lr in LR_GRID is trained
-on seed-3 init, and the lr with the lowest excess on the VAL split (never test) wins; ties -> smaller lr. Results are
-cached in TUNE_DIR/<arm>_N<N>_<lang>.json. Eval seeds are EVAL_SEEDS=(0,1,2); seed 3 is rejected as an eval seed.
+for TUNE_STEPS=1000 steps (independent of the eval --steps, default 5000) on seed-3 init, and the lr with the lowest
+excess on the VAL split (never test) wins; ties -> smaller lr. Results are cached in TUNE_DIR/<arm>_N<N>_<lang>.json
+(with the tune steps). nothink/nonull have no tune jobs: they reuse the tuned lr of ("qflm", N, lang).
+Arms: qflm/nothink/nonull at N in {8,16,32}, embed/dephased at N=16, gru, gpt. Eval seeds are EVAL_SEEDS=(0,1,2); seed 3 is rejected as an eval seed.
 run_job reads the tuned lr from the cache and raises if missing, so eval cannot start before tuning.
 Writes runs/reglang/<lang>__<arm>__s<seed>.json atomically; existing files are skipped (resumable).
 """
@@ -30,6 +32,10 @@ ZERO = Path(__file__).resolve().parent
 OUT = ZERO / "runs" / "reglang"
 PREREG = ZERO / "PREREG.md"
 AMENDMENT = "## Amendment 5 (pre-result)"
+AMENDMENT9 = "## Amendment 9 (pre-result)"
+QF_ARMS = ("qflm", "embed", "nothink", "nonull", "dephased")
+REUSE_LR = ("nothink", "nonull")  # no tune jobs; reuse qflm's tuned lr at the same N
+TUNE_STEPS = 1000
 TUNE_DIR = OUT / "tune"
 LR_GRID = (1e-3, 3e-3, 1e-2)
 TUNE_SEED = 3
@@ -38,7 +44,7 @@ SPLITS = dict(train=(20000, 0), val=(2000, 1), test=(2000, 2))
 LANGS = rl.LANGS
 NS = (8, 16, 32)
 # (arm, N) job variants; N=0 for the non-QF-LM arms; dephased has one N (ponytail: N=16, spec lists a single job)
-ARMS = [(a, n) for a in ("qflm", "embed", "nothink", "nonull") for n in NS] + [("gru", 0), ("gpt", 0), ("dephased", 16)]
+ARMS = [(a, n) for a in ("qflm", "nothink", "nonull") for n in NS] + [("embed", 16), ("gru", 0), ("gpt", 0), ("dephased", 16)]
 LN2 = math.log(2)
 
 
@@ -148,12 +154,13 @@ def plan(langs, arms, seeds, out=OUT):
 
 
 def tune_path(arm, N, lang):
+    arm = "qflm" if arm in REUSE_LR else arm
     return Path(TUNE_DIR) / f"{arm}_N{N}_{lang}.json"
 
 
 def tune_plan(langs, arms):
     return [dict(lang=l, arm=a, N=n, key=tune_path(a, n, l).stem, done=tune_path(a, n, l).exists())
-            for l in langs for a, n in arms]
+            for l in langs for a, n in arms if a not in REUSE_LR]
 
 
 def _atomic_json(path, rec):
@@ -176,8 +183,9 @@ def ignore_list(out):
     return ["house-events.jsonl"] + ([os.path.relpath(out, ZERO)] if out.is_relative_to(ZERO) else [])
 
 
-def tune(arm, N, lang, steps, batch):
+def tune(arm, N, lang, batch=64):
     """Pick the lr from LR_GRID with the lowest VAL excess on TUNE_SEED; never loads the test split."""
+    steps = TUNE_STEPS
     sha = clean_sha(ZERO, ignore_list(OUT))
     tr, va = load_split(lang, "train"), load_split(lang, "val")
     val = {}
@@ -197,9 +205,12 @@ def tuned_lr(arm, N, lang):
     return json.loads(p.read_text())["lr"]
 
 
-def require_amendment():
-    if AMENDMENT not in Path(PREREG).read_text(encoding="utf-8").splitlines():
-        raise SystemExit(f'refusing: PREREG.md has no "{AMENDMENT}" heading (L-PREREG)')
+def require_amendment(arms=()):
+    lines = Path(PREREG).read_text(encoding="utf-8").splitlines()
+    need = [AMENDMENT] + ([AMENDMENT9] if any(a in QF_ARMS for a in arms) else [])
+    for h in need:
+        if h not in lines:
+            raise SystemExit(f'refusing: PREREG.md has no "{h}" heading (L-PREREG)')
 
 
 def run_job(job, sha, steps=5000, batch=64):
@@ -219,9 +230,9 @@ def run_job(job, sha, steps=5000, batch=64):
 
 
 def _tune_worker(args):
-    job, steps, batch, threads = args
+    job, batch, threads = args
     torch.set_num_threads(threads)
-    return job["key"], tune(job["arm"], job["N"], job["lang"], steps, batch)
+    return job["key"], tune(job["arm"], job["N"], job["lang"], batch)
 
 
 def _worker(args):
@@ -253,14 +264,17 @@ def main(argv=None):
         print(f"{len(ttodo)}/{len(tjobs)} tune pending -> {TUNE_DIR}")
         for j in tjobs:
             print(("tune-done " if j["done"] else "tune-todo ") + j["key"])
+        for a, n in arms:
+            if a in REUSE_LR:
+                print(f"tune-none {a}{n} reuses qflm N{n} lr")
         print(f"{len(todo)}/{len(jobs)} pending -> {out}")
         for j in jobs:
             print(("done " if j["done"] else "todo ") + j["key"])
         return
-    require_amendment()
+    require_amendment({j["arm"] for j in (tjobs if a.tune else jobs)})
     threads = max(1, (os.cpu_count() or 1) // a.procs)
     if a.tune:
-        args = [(j, a.steps, 64, threads) for j in ttodo]
+        args = [(j, 64, threads) for j in ttodo]
         results = map(_tune_worker, args) if a.procs == 1 else ProcessPoolExecutor(a.procs).map(_tune_worker, args)
         for key, lr in results:
             print(key, f"lr={lr}", flush=True)
