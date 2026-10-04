@@ -2122,3 +2122,43 @@ Filed 2026-10-04, before any PLAN item 5 result exists. Coordinator ruling on Ca
 2. **Kaggle talking model (item 6)** keeps |V| = 4096, N = 2048. It is trained only after item 5 has decided.
 3. **One compute convention everywhere:** multiply-accumulates per token at the **measured expected** number of think steps. The worst case at s_max is reported beside it. This applies to every "equal FLOPs" statement for QF-LM arms in this PREREG and its amendments.
 4. **GRU flop-match grid:** Cameron widens it so that a flop-matched GRU exists at the item-5 size. The grid itself is a pin in `arms/` and is fixed before any item-5 result.
+
+## Amendment 7 (pre-result)
+Filed 2026-10-04, before any PLAN item 5 result exists.
+1. **+embed arm parametrisation (Kutner). This is a refinement of Amendment 5, not a contradiction.**
+   - Amendment 5 defines K_v = W_v diag(√M_v) Q, with W_v "a token-dependent unitary (low-rank butterfly per token)".
+   - The built arm (`qflm/model.py`, parameter `write_phase`, shape V×N, zero-initialised) uses **W_x = diag(exp(i · write_phase[x]))**. This is a token-dependent *diagonal* unitary, equal to the identity and hence to QF-LM at initialisation.
+   - It meets Amendment 5's general clause: it is a token-dependent unitary and leaves p(v) unchanged. It **replaces the "low-rank butterfly" parametrisation**. This holds for the +embed arm on the reglang bed and in item-5 criterion (a).
+   - Fact: a diagonal W_x commutes with diag(√M_x), so K_x†K_x = Q† diag(M_x) Q is unchanged. Emission probabilities equal QF-LM's; only the post-measurement phases (the write) differ.
+2. **Low-rank think variant QF-LM-r16 (reported only).**
+   - **Parameter counts.** Both are measured from `QFLM(1024, 1024, think_rank=r)` in `qflm/model.py`:
+     - The think-angle maps A_theta and A_phi together hold 10,485,760 of QF-LM's 11,557,888 params, which is **90.7%**.
+     - With `think_rank=16` (A = U·Vt per map), the model has **1,268,736 params**.
+   - **Status.** QF-LM-r16 is a **reported** arm, matched on MACs/token. Its flop-matched GPT is sized as `match_lm("gpt", flops=MAC_r16(s̄_r16), params=1,268,736, vocab=1024, n_head=4, seq_len=256)`, where s̄_r16 is measured as in item 3.
+   - **Deciding comparison.** It stays full-rank QF-LM against the param-matched GPT and GRU (Amendment 6).
+3. **Item-5 baseline table (Cameron, `PREREG_DRAFT_arms.md` §6) is merged here.** Appendix B is frozen at v1, so the table is restated in this amendment.
+   - **Convention.** All counts are MACs per token. The baselines' `active_flops()` count MACs.
+   - QF-LM(N=1024, V=1024) has 11,557,888 params. Cameron's MAC/token by think steps s:
+
+     | s | 0 | 1 | 2 | 3 | 4 (worst) |
+     |---|---|---|---|---|---|
+     | MAC/token | 1,123,840 | 12,806,144 | 24,488,448 | 36,170,752 | 47,853,056 |
+
+   - Baselines (`arms.match.match_lm`, tol ±5%, GRU width grid widened to 4096; GPT seq_len 256, 4 heads; all tied):
+
+     | Arm | Config | Params | MAC/token | Status |
+     |---|---|---|---|---|
+     | GPT param-matched | d_model 428, 5 layers | 11,567,556 | 11,979,292 | deciding |
+     | GRU param-matched | hidden = d_emb 512, 7 layers | 11,556,864 | 11,534,336 | deciding |
+     | GPT flop-matched, s = 1 | d_model 572, 3 layers | 12,534,236 | 12,805,364 | reported |
+     | GPT flop-matched, s = 2 | d_model 344, 16 layers | 23,233,072 | 24,487,296 | reported |
+     | GPT flop-matched, s = 4 | d_model 404, 23 layers | 45,686,340 | 47,849,356 | reported (worst case) |
+     | GRU flop-matched, s = 4 | hidden 1246, 5 layers | 47,891,256 | 47,851,384 | reported (worst case) |
+
+   - **Re-match rule.**
+     - s̄ is the trained QF-LM's mean think rounds per token on val, measured before the baselines' final runs.
+     - The reported flop-matched GPT is re-sized by `match_lm("gpt", flops=MAC(s̄), params=11,557,888, vocab=1024, n_head=4, seq_len=256)`. The s = 1, 2, 4 rows bracket it.
+     - At s̄ → 0 the flop-matched GPT degenerates (d_model 72, 13 layers). The param-matched rows stay deciding at any s̄.
+   - **Binding MAC function.** MAC(s̄) is `QFLM.active_macs(rounds=s̄+1)` in `qflm/model.py`, the code that runs.
+     - Fact: that function gives 1,216,512 + 11,867,136·s. Cameron's table gives 1,123,840 + 11,682,304·s.
+     - The function is 8.2% higher at s = 0 and 1.7% higher at s = 4. The table rows above are brackets only, and the re-match uses the function.
