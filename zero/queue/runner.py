@@ -36,10 +36,26 @@ class _MS(ctypes.Structure):
 
 def mem_free():
     """-> (free physical bytes, free commit bytes); injectable for tests."""
-    s = _MS()
-    s.dwLength = ctypes.sizeof(s)
-    ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(s))
-    return s.ullAvailPhys, s.ullAvailPageFile
+    if hasattr(ctypes, "windll"):
+        s = _MS()
+        s.dwLength = ctypes.sizeof(s)
+        ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(s))
+        return s.ullAvailPhys, s.ullAvailPageFile
+    phys, commit = 16 * GiB, 16 * GiB
+    try:
+        with open("/proc/meminfo", "r") as f:
+            info = {}
+            for line in f:
+                parts = line.split(":")
+                if len(parts) == 2:
+                    info[parts[0].strip()] = int(parts[1].strip().split()[0]) * 1024
+            if "MemAvailable" in info:
+                phys = info["MemAvailable"]
+            if "Committed_AS" in info and "CommitLimit" in info:
+                commit = max(0, info["CommitLimit"] - info["Committed_AS"])
+    except OSError:
+        pass
+    return phys, commit
 
 
 def disk_free(path):
@@ -51,21 +67,44 @@ def mem_ok(phys, commit):
 
 
 def pid_alive(pid):  # never os.kill(pid, 0): on Windows that terminates the process
-    k = ctypes.windll.kernel32
-    k.OpenProcess.restype = ctypes.c_void_p
-    h = k.OpenProcess(0x1000, False, int(pid))
-    if not h:
+    if hasattr(ctypes, "windll"):
+        k = ctypes.windll.kernel32
+        k.OpenProcess.restype = ctypes.c_void_p
+        h = k.OpenProcess(0x1000, False, int(pid))
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        k.GetExitCodeProcess(ctypes.c_void_p(h), ctypes.byref(code))
+        k.CloseHandle(ctypes.c_void_p(h))
+        return code.value == 259
+    try:
+        os.kill(int(pid), 0)
+    except PermissionError:
+        return True
+    except ProcessLookupError:
         return False
-    code = ctypes.c_ulong()
-    k.GetExitCodeProcess(ctypes.c_void_p(h), ctypes.byref(code))
-    k.CloseHandle(ctypes.c_void_p(h))
-    return code.value == 259
+    except OSError:
+        return False
+    try:
+        with open(f"/proc/{int(pid)}/status", "r") as f:
+            for line in f:
+                if line.startswith("State:"):
+                    return "Z" not in line.split(":")[1]
+    except OSError:
+        pass
+    return True
 
 
 def stale_since_boot(path):  # status.json older than the last boot: recorded pids may belong to other processes now
-    k = ctypes.windll.kernel32
-    k.GetTickCount64.restype = ctypes.c_ulonglong
-    return os.path.getmtime(path) < time.time() - k.GetTickCount64() / 1000
+    if hasattr(ctypes, "windll"):
+        k = ctypes.windll.kernel32
+        k.GetTickCount64.restype = ctypes.c_ulonglong
+        return os.path.getmtime(path) < time.time() - k.GetTickCount64() / 1000
+    try:
+        boot_time = time.time() - (time.clock_gettime(time.CLOCK_BOOTTIME) if hasattr(time, "CLOCK_BOOTTIME") else time.monotonic())
+    except OSError:
+        boot_time = 0.0
+    return os.path.getmtime(path) < boot_time
 
 
 class Adopted:
