@@ -1,0 +1,3 @@
+## 2026-03-09 - Cross-Platform Process/Memory Querying in Queue Runner
+**Learning:** Calling `ctypes.windll` unconditionally causes `AttributeError` on POSIX/Linux platforms, blocking queue test execution and status checking. Furthermore, on Linux, checking process liveness via `os.kill(pid, 0)` can return True for zombie processes; checking `/proc/<pid>/status` for state 'Z' ensures accurate process status monitoring without hanging or misclassifying dead processes.
+**Action:** Always check `hasattr(ctypes, "windll")` for Windows-specific kernel32 calls, and fallback to `/proc/meminfo` for memory stats and `/proc/<pid>/status` for zombie-aware process checking on POSIX systems.
