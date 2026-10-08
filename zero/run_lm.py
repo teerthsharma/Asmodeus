@@ -20,6 +20,8 @@ from qflm import telemetry
 
 
 def spearman(x, y):
+    if len(x) == 0 or np.all(x == x[0]) or np.all(y == y[0]):
+        return None
     r = float(spearmanr(x, y)[0])
     return None if math.isnan(r) else r                                   # constant input: no correlation, valid JSON
 
