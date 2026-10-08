@@ -224,13 +224,19 @@ def _flat(g, state, n_max, seed):
 
 
 def _pairs(s, geo, keep, chunk=256):
+    # Optimize distance computation by evaluating upper-triangular sub-matrices only:
+    # compare s[a:a+chunk] against s[a:] instead of full s, cutting redundant calculations by ~half.
     I, J = [], []
-    for a in range(0, len(s), chunk):
-        d = geo(s[a:a + chunk, None], s[None])
+    n = len(s)
+    for a in range(0, n, chunk):
+        sub_s = s[a:]
+        d = geo(s[a:a + chunk, None], sub_s[None])
         i, j = np.nonzero(keep(d))
-        i = i + a
         m = i < j
-        I.append(i[m]); J.append(j[m])
+        I.append(i[m] + a)
+        J.append(j[m] + a)
+    if not I:
+        return np.zeros(0, int), np.zeros(0, int)
     return np.concatenate(I), np.concatenate(J)
 
 
