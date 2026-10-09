@@ -1,0 +1,3 @@
+## 2026-04-18 - GF(2) Rank Reduction and Mapper Pair Filtering Optimization
+**Learning:** Bitmask reductions in topological metrics (`_rank_cols`) repeatedly called `bit_length()` and looked up dictionary entries per step; caching `bl` and using `if bl in pivots:` gives ~1.4x speedup. In `_mapper_seq`, replacing `-np.ones` array allocations inside cover ball loops with boolean mask indexing (`m_j[p0] & m_j[p1]`) eliminates high-frequency numpy allocation overhead.
+**Action:** Caching column bit-length in GF(2) reduction and using direct boolean array indexing for pair filtering in spatial covers reduces runtime without introducing complexity.
