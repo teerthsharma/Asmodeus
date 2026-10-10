@@ -47,6 +47,9 @@ def is_complete(K, tol=1e-9):
 
 def max_masses(K):
     """max over unit psi of |K_v psi|^2 = largest singular value squared, per outcome."""
+    # Optimization for diag_q_instrument: max singular value of diag(sqrt(M[:, v])) Q (Q unitary) is max_i M[i, v].
+    if hasattr(K, "M"):
+        return K.M.max(axis=0)
     return np.array([np.linalg.norm(k, 2) ** 2 for k in K])
 
 
@@ -60,7 +63,13 @@ def tokens_reachable(K, p):
 
 def mutual_information_nats(K, psis):
     """I(X; V) for X uniform over the rows of psis (pure states) and V the outcome of instrument K."""
-    P = np.array([[np.linalg.norm(k @ p) ** 2 for k in K] for p in psis])     # p(v | x)
+    # Optimization for diag_q_instrument: batch matrix multiplication instead of looping over outcomes and psis.
+    if hasattr(K, "M") and hasattr(K, "Q"):
+        X = np.asarray(psis)  # shape (S, N)
+        QX = (K.Q @ X.T).T     # shape (S, N), Q @ p for each p
+        P = (np.abs(QX) ** 2) @ K.M  # P[s, v] = sum_i M[i, v] * |(Q p_s)_i|^2, shape (S, V)
+    else:
+        P = np.array([[np.linalg.norm(k @ p) ** 2 for k in K] for p in psis])     # p(v | x)
     pv = P.mean(0)
     with np.errstate(divide="ignore", invalid="ignore"):
         t = np.where(P > 0, P * np.log(P / pv), 0.0)
