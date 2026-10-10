@@ -120,7 +120,7 @@ def test_training_smoke():
         opt.zero_grad()
         loss.backward()
         opt.step()
-        losses.append(float(loss))
+        losses.append(float(loss.detach()))
     assert losses[-1] < losses[0] and not np.isnan(losses).any()
 
 
