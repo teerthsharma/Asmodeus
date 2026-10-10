@@ -5,6 +5,7 @@ import math
 import os
 import sys
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -20,7 +21,9 @@ from qflm import telemetry
 
 
 def spearman(x, y):
-    r = float(spearmanr(x, y)[0])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = float(spearmanr(x, y)[0])
     return None if math.isnan(r) else r                                   # constant input: no correlation, valid JSON
 
 
