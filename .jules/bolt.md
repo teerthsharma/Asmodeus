@@ -1,0 +1,3 @@
+## 2026-03-31 - Analytical & Vectorized Quantum Instrument Check Optimization
+**Learning:** In `zero/ref/instrument_check.py`, computing `max_masses` and `mutual_information_nats` for `diag_q_instrument` was previously executing 4,096 matrix norm/SVD operations per evaluation. Because `K_v = diag(sqrt(M[:, v])) Q` with unitary $Q$, the maximum singular value squared is analytically $\max_i M_{i, v}$ and state outcome probabilities $P_{s, v}$ can be computed via BLAS matrix multiplication `(abs(Q @ psis.T)**2).T @ M`.
+**Action:** Always check for analytical simplifications and batch matrix multiplication opportunities when structured linear algebra objects (`diag_q_instrument`) are evaluated over large outcome sets ($V=4096$).
