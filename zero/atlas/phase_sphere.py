@@ -131,13 +131,15 @@ class PhaseSphere(nn.Module):
     def _U(self, a, idx):
         """a [n,A], idx [n,c] -> unitary steps [n,c,d_c,d_c]: cayley(skew_hermitian(X_k(a)))."""
         d = self.d_c
-        X = torch.einsum("na,ncaj->ncj", a, self.Wx[idx]) + self.bx[idx]
+        # Fast batched matmul (a.unsqueeze(1).unsqueeze(-2) @ self.Wx[idx]).squeeze(-2) avoids einsum overhead
+        X = (a.unsqueeze(1).unsqueeze(-2) @ self.Wx[idx]).squeeze(-2) + self.bx[idx]
         X = torch.complex(X[..., :d * d], X[..., d * d:]).reshape(*X.shape[:-1], d, d)
         return cayley(skew_hermitian(X))
 
     def _phi(self, z, idx):
         """z complex [n,c,d_c], idx [n,c] -> [n,c,D_g] per-chart linear on the real view."""
-        return torch.einsum("nci,ncio->nco", _rv(z), self.Wphi[idx]) + self.bphi[idx]
+        # Fast batched matmul (_rv(z).unsqueeze(-2) @ self.Wphi[idx]).squeeze(-2) avoids einsum overhead
+        return (_rv(z).unsqueeze(-2) @ self.Wphi[idx]).squeeze(-2) + self.bphi[idx]
 
     # ---- inference path (what active_flops counts) ------------------------------------------
     def observe(self, obs, act, mode="loop", phase=None):
@@ -167,13 +169,14 @@ class PhaseSphere(nn.Module):
         Vc = self._V()[cidx]                                           # [BT,c,N,d_c]
         ac = alpha.gather(1, cidx)
         ph = _unit(ac).conj()                                          # e^{-i arg alpha_k}
-        zc = torch.einsum("bcnd,bn->bcd", Vc.conj(), x) * ph[..., None]
-        zhc = torch.einsum("bcij,bcj->bci", self._U(a, cidx), zc)
+        # Fast batched matmuls avoid slow 4D einsums
+        zc = (x.unsqueeze(1).unsqueeze(-2) @ Vc.conj()).squeeze(-2) * ph[..., None]
+        zhc = (self._U(a, cidx) @ zc.unsqueeze(-1)).squeeze(-1)
         if mode == "amortised":
             w1 = vals.softmax(-1)
             wstar, iters, res = w1.detach(), 0, torch.zeros(B * T, device=x.device)
         else:
-            y = torch.einsum("bcnd,bcd->bcn", Vc, zhc) * ph.conj()[..., None]   # V U V^H psi (phase restored)
+            y = (Vc @ zhc.unsqueeze(-1)).squeeze(-1) * ph.conj()[..., None]   # V U V^H psi (phase restored)
             uc = u[cidx]
 
             def step(w, y=y, uc=uc):                                   # CTC map: w -> Born(<u|normalise(sum w y)>)

@@ -46,12 +46,15 @@ class StackedMLP(nn.Module):
         """x [N, m, i], idx [N, m] -> [N, m, o]; reads only rows idx of the stacked weights."""
         n, m, i = x.shape
         step = max(1, 2 ** 25 // (m * i * self.W1.shape[-1]))  # ponytail: chunk caps gathered-weight memory
+        if step >= n:
+            hid = F.silu(torch.einsum("nmi,nmih->nmh", x, self.W1[idx]) + self.b1[idx])
+            return torch.einsum("nmh,nmho->nmo", hid, self.W2[idx]) + self.b2[idx]
         out = []
         for s in range(0, n, step):
             j, xs = idx[s:s + step], x[s:s + step]
             hid = F.silu(torch.einsum("nmi,nmih->nmh", xs, self.W1[j]) + self.b1[j])
             out.append(torch.einsum("nmh,nmho->nmo", hid, self.W2[j]) + self.b2[j])
-        return torch.cat(out)
+        return torch.cat(out) if len(out) > 1 else out[0]
 
     def dense(self, x):
         """x [N, i] or [N, K, i] -> [N, K, o]: all K charts (reference path, FLOPs prop. to K)."""
@@ -185,7 +188,8 @@ class ObserverAtlas(nn.Module):
         gate = torch.sigmoid(self.gate(c))
         if mode == "lazy":
             z, zh, phz, phzh = self._charts(o, a, idx)
-            g, gh = torch.einsum("nm,nmd->nd", w, phz), torch.einsum("nm,nmd->nd", w, phzh)
+            # Fast weighted sum avoids einsum overhead
+            g, gh = (w.unsqueeze(-1) * phz).sum(1), (w.unsqueeze(-1) * phzh).sum(1)
         elif mode in ("dense", "soft"):
             zall = self.E.dense(o)
             zhall = zall + self.P.dense(torch.cat([zall, a[:, None].expand(-1, self.K, -1)], -1))
@@ -256,7 +260,8 @@ class ObserverAtlas(nn.Module):
         out = []
         for h in range(act.shape[1]):
             z = z + self.P(torch.cat([z, act[:, h, None].expand(-1, self.m, -1)], -1), idx)
-            out.append(gate * torch.einsum("nm,nmd->nd", w, self.phi(z, idx)))
+            # Fast weighted sum avoids einsum overhead
+            out.append(gate * (w.unsqueeze(-1) * self.phi(z, idx)).sum(1))
         return torch.stack(out, 1)
 
     def active_flops(self):
