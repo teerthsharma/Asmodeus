@@ -26,7 +26,8 @@ def stiefel(W):
 
 def povm_probs(V, psi):
     """V [K, N] isometry, psi [..., N] unit -> p [..., K] = |V psi|^2. Sums to 1 by V^H V = I; no renormalisation."""
-    return _abs2(torch.einsum("kn,...n->...k", V, psi))
+    # Fast batched matmul (psi @ V.T) avoids einsum overhead
+    return _abs2(psi @ V.T)
 
 
 def povm_probs_subset(V, psi, idx):
@@ -56,7 +57,8 @@ def link_cayley(zj, zk, W):
 
 def cocycle_loss(G, zj, zk):
     """mean over batch of ||zk - G zj||^2."""
-    return _abs2(zk - torch.einsum("...ij,...j->...i", G, zj)).sum(-1).mean()
+    # Fast batched matmul (G @ zj.unsqueeze(-1)).squeeze(-1) avoids einsum overhead
+    return _abs2(zk - (G @ zj.unsqueeze(-1)).squeeze(-1)).sum(-1).mean()
 
 
 def fidelity(a, b):
@@ -173,21 +175,24 @@ class Asmodeous(nn.Module):
     def _U(self, a, idx):
         """a [n,A], idx [n,c] -> unitary steps [n,c,d_c,d_c] = cayley(skew_hermitian(X_k(a)))."""
         d = self.d_c
-        X = torch.einsum("na,ncaj->ncj", a, self.Wx[idx]) + self.bx[idx]
+        # Fast batched matmul (a.unsqueeze(1).unsqueeze(-2) @ self.Wx[idx]).squeeze(-2) avoids einsum overhead
+        X = (a.unsqueeze(1).unsqueeze(-2) @ self.Wx[idx]).squeeze(-2) + self.bx[idx]
         X = torch.complex(X[..., :d * d], X[..., d * d:]).reshape(*X.shape[:-1], d, d)
         return cayley(skew_hermitian(X))
 
     def _phi(self, z, idx):
         """z complex [n,c,d_c], idx [n,c] -> [n,c,D_g], linear per chart on the real view."""
-        return torch.einsum("nci,ncio->nco", _rv(z), self.Wphi[idx]) + self.bphi[idx]
+        # Fast batched matmul (_rv(z).unsqueeze(-2) @ self.Wphi[idx]).squeeze(-2) avoids einsum overhead
+        return (_rv(z).unsqueeze(-2) @ self.Wphi[idx]).squeeze(-2) + self.bphi[idx]
 
     def _charts(self, x, a, alpha, idx):
         """Only the charts in idx [n,c]: gauge-fixed z, stepped zh, and the predicted ambient state y [n,c,N]."""
         Vc = self._Vc()[idx]                                           # [n,c,N,d_c]
         ph = _unit(alpha).conj()                                       # e^{-i arg alpha_k}
-        z = torch.einsum("bcnd,bn->bcd", Vc.conj(), x) * ph[..., None]
-        zh = torch.einsum("bcij,bcj->bci", self._U(a, idx), z)
-        y = torch.einsum("bcnd,bcd->bcn", Vc, zh) * ph.conj()[..., None]   # phase restored
+        # Fast batched matmuls avoid slow 4D einsums
+        z = (x.unsqueeze(1).unsqueeze(-2) @ Vc.conj()).squeeze(-2) * ph[..., None]
+        zh = (self._U(a, idx) @ z.unsqueeze(-1)).squeeze(-1)
+        y = (Vc @ zh.unsqueeze(-1)).squeeze(-1) * ph.conj()[..., None]   # phase restored
         return z, zh, y
 
     # ---- inference path (what active_flops counts) ------------------------------------------
