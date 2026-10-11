@@ -10,12 +10,15 @@ HOOK = Path(__file__).resolve().parents[1] / "queue" / "pre-commit"
 SH = shutil.which("sh") or shutil.which("bash")
 
 
+CLEAN = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}  # a hook's GIT_DIR must not leak in
+
+
 def _git(repo, *a):
-    return subprocess.run(["git", *a], cwd=repo, capture_output=True, text=True)
+    return subprocess.run(["git", *a], cwd=repo, capture_output=True, text=True, env=CLEAN)
 
 
 def _hook(repo):
-    env = dict(os.environ, ZERO_HOOK_NO_TESTS="1")
+    env = dict(CLEAN, ZERO_HOOK_NO_TESTS="1")
     return subprocess.run([SH, str(HOOK)], cwd=repo, capture_output=True, text=True, env=env).returncode
 
 

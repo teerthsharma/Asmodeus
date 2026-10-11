@@ -14,7 +14,9 @@ if git diff --cached --name-only | grep -qx 'zero/PREREG.md' && [ -n "$(git ls-f
   echo "pre-commit: PREREG.md changed after results exist in zero/runs/" >&2; exit 1
 fi
 if [ "${ZERO_HOOK_NO_TESTS:-0}" != "1" ] && [ -d zero/tests ]; then
-  (cd zero && python -m pytest -q tests/test_laws.py tests/test_facts.py tests/test_queue.py) >/dev/null 2>&1 \
+  # git exports GIT_DIR/GIT_INDEX_FILE to hooks; they override `git -C <tmp repo>` inside the tests
+  (cd zero && unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_PREFIX && \
+    python -m pytest -q tests/test_laws.py tests/test_facts.py tests/test_queue.py) >/dev/null 2>&1 \
     || { echo "pre-commit: zero fast tests failed (run them in zero/)" >&2; exit 1; }
 fi
 exit 0

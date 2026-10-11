@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import subprocess
 import sys
@@ -36,8 +37,10 @@ def plenty(monkeypatch):
 
 
 def git(repo, *a):
+    # drop GIT_* (a commit hook exports GIT_DIR): with it, `git init` here re-inits the real repo as bare
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(repo), *a], check=True,
-                   capture_output=True)
+                   capture_output=True, env=env)
 
 
 def mkrepo(path, commit_prereg=True):

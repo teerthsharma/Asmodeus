@@ -69,6 +69,61 @@ The `Asmodeous` class is being built test-first against its contract (`tests/tes
 
 ---
 
+## FCPA: the Fluid Chrononal Predictive Architecture, and the road ahead
+
+The next shape of Asmodeous ० is a **time traveller moving through a fluid of worlds**. Data is not one distribution. It is a *multiversal data fluid*: an ensemble of trajectories whose governing law changes from one stretch of time to the next. FCPA cuts that fluid into **eras**. An era is a time slice bounded on both sides by a **Markov bound** (the transition law changes) and a **Navier–Stokes bound** (the flow law, viscosity and forcing, changes), and each era holds its own small world model. A softmax **time traveller** answers alone when it can. When it cannot, it jumps into the era it needs. To cross from one era to the next it must compute the **differentiator** $\Delta E$, the change of the equations, and that change is also the **address** of where the data lives. The traveller closes the loop the way a closed timelike curve does: it reads the futures its own choice would cause, and commits only to a self-consistent one. New eras are born while the system runs, like hot reload in a game engine, so the model teaches itself: **recursive self-learning (RSL)**.
+
+```mermaid
+flowchart LR
+    X["x_t, x_t-1<br/>lag-stacked state"] --> TT["Time traveller<br/>softmax TT"]
+    TT -- "alone" --> Y["prediction"]
+    TT -- "asks for an era" --> R["Router<br/>conformal set + law fingerprint"]
+    R --> E1["Era 1<br/>law (ν₁, f₁)"]
+    R --> E2["Era 2<br/>law (ν₂, f₂)"]
+    R --> E3["Era k<br/>born online (RSL)"]
+    E1 -- "ΔE₁₂ crossing" --> E2
+    E1 & E2 & E3 --> CTC["CTC fixed-point loop<br/>T > κ_H ⇒ unique w*"]
+    CTC --> Y
+```
+
+The whole architecture is written as lemmas first, proved in Lean 4, and implemented as one scikit-learn estimator (`FCPARegressor`, which passes `check_estimator`) whose `partial_fit` equals `fit` exactly, because every era keeps only additive sufficient statistics. The equations that carry it:
+
+$$\text{era law:}\quad \partial_t\omega + u\cdot\nabla\omega = \nu_k\,\Delta\omega + f_k,\qquad \hat\nu_k = \frac{S_{RL}}{S_{LL}}\ \ \text{(exact projection, L8)}$$
+
+$$\text{crossing and address:}\quad \Delta E_{jk} = (\nu_k-\nu_j,\ f_k-f_j,\ P_k-P_j),\qquad S_{jk} = \exp\!\Big(\textstyle\sum_a \Delta E_{jk}^{a}\,G_a\Big)\ \text{unitary (L13, L15)}$$
+
+$$\text{time loop:}\quad w^\star = \mathrm{softmax}\!\Big(\tfrac{\beta}{T}A\,w^\star\Big)\ \text{is unique and reached geometrically whenever}\ T > \kappa_H = \tfrac{\beta}{4}\max_{ijkl}\big(A_{ik}-A_{jk}-A_{il}+A_{jl}\big)$$
+
+$$\text{era birth:}\quad M_t = S_t + \tfrac{1}{t+1},\ \ S_t=(S_{t-1}+w_t)\,\kappa p_t^{\kappa-1},\qquad \Pr(\text{any false birth}) \le \delta\ \ \text{(Ville, L24*)}$$
+
+### Where it stands
+
+| Piece | State |
+|---|---|
+| Lemmas | L1–L27 with Amendments A–C, plus [Amendment D](zero/docs/specs/2026-10-11-fcpa-amendment-D.md) (L28–L36: closed-loop error, horizon damping, linear insufficiency, the quadratic era model, CTC informativeness, calibration under dependence) |
+| Lean 4 | 35 files, **0 `sorry`** ([`lean/`](zero/lean/), [`CHANGES.md`](zero/lean/CHANGES.md)), including the undamped CTC fixed point (`hilbert_ctc_fixed_point`), the birth false-alarm bound, exact `partial_fit` and split-conformal coverage |
+| Estimator | [`fcpa/`](zero/fcpa/): 373 tests pass (Inspector rerun); `check_estimator` 50 passed, 1 skipped |
+| Seed-3 tuning bed | one-step error **0.0075 against persistence 0.030** (4× better); era identification from the estimated law **P3 = 0.928** against a 0.9 bar |
+| Preregistration | Amendments 11, 11a and 11b frozen by sha256 before any evaluation result ([`docs/specs/`](zero/docs/specs/)) |
+
+### What we got wrong, and what it taught
+
+- **A linear era model cannot win at fifty steps when its one-step map is composed.** The rollout gains energy through a momentum mode, and clipping the spectral radius does not touch it: $\sum_{j<50}\lVert \hat A^j\rVert$ is 4195 with or without clipping (L28). The best *direct* linear 50-step map sits exactly on persistence (L29). Any real long-horizon gain has to come from the quadratic advection term.
+- **Damping buys the rollout and sells the butterfly.** Shrinking increments is a rescaling of the model's clock, so $\lambda_{\text{model}} \approx \gamma\,\lambda_{\text{data}}$, and the frozen butterfly bar needs $\gamma \gtrsim 0.8$ (L28c).
+- **The first time loop ran too cold.** At $T=1$ the live loop sat 85× above $\kappa_H$ and refused every call. It cost nothing only because every blend had two eras, where the fixed point is uniform anyway (L32).
+- **The first birth guarantee assumed independent windows.** Navier–Stokes windows are autocorrelated, and the unrepaired detector alarmed 74% of the time on null streams. Calibrating the running maximum across independent trajectories restores the bound with no assumption inside a trajectory ([E1](zero/docs/specs/theory/E1_trajectory_calibrated_birth.md)).
+
+### The plan
+
+1. **Close the theory.** Amendment E brings in [L37](zero/docs/specs/theory/L37_shift_equivariant_era_ridge.md), the shift-equivariant era ridge. Every law of the bed is exactly invariant under $x$-shifts and the $\pi$-rotation, so the era model is restricted to the symmetric subspace $V_Q$ by training on 34 shifted copies of each chunk. That is exactly the restricted ridge, it keeps `partial_fit` exact, it is never worse than the unconstrained fit on any sample, and it cuts the quadratic library from 272,000 to 22,780 parameters. Amendment E also carries [L28c](zero/docs/specs/theory/L28c_damping_vs_butterfly.md) and the trajectory-calibrated birth rule E1. Preregistration 11c then freezes the resulting pins: κ = 0.8, CTC normalisation $q = 0.8$, trajectory-level calibration, and the law threshold re-picked on validation.
+2. **Prove it in Lean.** Formalise L28–L37 and E1, and port the project from Lean v4.7.0 to the pinned v4.34.1. The few results Mathlib still lacks (Hoeffding for chains, Ky Fan, Krasnosel'skii–Mann) stay cited, never `sorry`.
+3. **Build the era model.** Implement the $V_Q$ quadratic era ridge at $\gamma \ge 0.8$. It has to beat persistence at fifty steps on the tuning seed while keeping the one-step win and the butterfly bar. Measure the owned baselines (Global, ASMODEOUS) on the same seed so the real target is known.
+4. **Run the primary claim.** Five evaluation seeds, P1–P4 with the compute rules, the Holm family S1–S5, and the kill rules as frozen. If the claim fails, FCPA stays behind a feature flag, and the report says exactly which bar it lost.
+5. **Language.** Swap the Navier–Stokes bed for text. The time traveller becomes a true language model, eras become domains and periods of a corpus, and $\Delta E$ becomes the change of law between them: the address of where a fact lives.
+6. **Recursive self-learning at scale.** Eras hot-reload while the system runs, provenance tags keep self-generated data from collapsing the model, and Shapley values retire eras that no longer pay their way. Every birth stays under its false-alarm bound.
+
+---
+
 ## 1. Introduction
 
 Computation has a hidden assumption: that the whole state is always there, waiting. A transformer holds every token against every token. A dense network runs every weight on every input. A fixed-rate renderer draws every frame whether or not anything moved. The world does not work like this. A quantum system is a superposition until it is measured, and what is measured is a *choice* of basis that the observer makes. The idea of this project is to build a learner that is made the same way: **nothing is computed until it is observed, and the observer decides what is worth observing.**
@@ -395,6 +450,9 @@ zero/
 │   ├── povm.py                 projective and Naimark POVMs
 │   ├── time_traveller.py       the START / life-line / HALT planning loop
 │   └── hybrid.py               HYBRID: atlas + coherent decider + time-traveller
+├── fcpa/                       FCPA: the scikit-learn estimator, beds, bars and the primary runner
+├── lean/                       Lean 4 proofs of the FCPA lemmas (0 sorry)
+├── docs/specs/                 FCPA spec, amendments, preregistration, freezes, errata, audits
 ├── arms/                       the owned baselines, matched at equal active FLOPs and params
 │   ├── single_jepa.py  mop_jepa.py  chart_ae.py  lazy_chart_ae.py  peer_jepa.py
 │   ├── planner.py              CEM planner

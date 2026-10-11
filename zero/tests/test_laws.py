@@ -12,7 +12,7 @@ ZERO = Path(__file__).resolve().parents[1]
 ROOT = Path(subprocess.check_output(["git", "rev-parse", "--show-toplevel"], cwd=ZERO, text=True).strip())
 REL = ZERO.relative_to(ROOT).as_posix()                 # "zero"
 SHA_PIN = "467c2ae25f92121093a60435c3397bd5f1e9fe246a2f602b4fc03bbace40a3fe"
-SKIP_DIRS = {".git", ".pytest_cache", ".benchmarks", "__pycache__", "node_modules"}
+SKIP_DIRS = {".git", ".pytest_cache", ".benchmarks", "__pycache__", "node_modules", ".lake"}  # .lake: gitignored vendored Mathlib
 
 
 def git(*a):
@@ -69,9 +69,18 @@ def test_no_ai_attribution_in_files():
     assert not hits, hits
 
 
+# Jules-bot commits already published on main (c1e3d9f from PR #13, 78970f8, c9633bd): each one's only match
+# is a trailer naming the human owner (teerthsharma). Exempted by SHA on the owner's decision; history is not
+# rewritten.
+ATTRIB_ALLOW = {"c1e3d9f5e69c80bf35b03eaad297407499c8b49b", "78970f8308d460584964c33fabaa4967403f5139",
+                "c9633bd8071fb1a4615103ea50516ace6c558683"}
+
+
 def test_no_ai_attribution_in_commits():
-    log = git("log", "--format=%H%n%B", "--", REL).stdout
-    assert not ATTRIB.search(log), "a commit touching zero/ carries an AI attribution line"
+    log = git("log", "--format=%H%x00%B%x01", "--", REL).stdout
+    commits = [c.split("\x00", 1) for c in log.split("\x01") if "\x00" in c]
+    bad = [sha.strip() for sha, body in commits if sha.strip() not in ATTRIB_ALLOW and ATTRIB.search(body)]
+    assert not bad, f"commits touching zero/ carry an AI attribution line: {bad}"
 
 
 # ---- (c) L-PREREG: PREREG.md committed strictly before any result exists ------------------------
@@ -149,7 +158,8 @@ def test_prereg_read_only():
 
 # ---- (d) L-SHA ----------------------------------------------------------------------------------
 def test_identities_sha_pin():
-    assert hashlib.sha256((ZERO / "ref" / "identities.py").read_bytes()).hexdigest() == SHA_PIN
+    # LF-normalised: a Windows autocrlf checkout must hash the committed bytes, not its CRLF copy
+    assert hashlib.sha256((ZERO / "ref" / "identities.py").read_bytes().replace(b"\r\n", b"\n")).hexdigest() == SHA_PIN
 
 
 # ---- Mapper fairness (C2 baseline, L-BR) --------------------------------------------------------
