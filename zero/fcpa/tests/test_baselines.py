@@ -129,6 +129,18 @@ def test_baselines_freeze_gate_refuses_a_changed_spec(tmp_path, victim):
         run_primary.verify_freeze(specs)
 
 
+@pytest.mark.parametrize("eol", [b"\n", b"\r\n"])
+def test_baselines_freeze_gate_ignores_line_endings(tmp_path, eol):
+    """A pin taken on an autocrlf (Windows) checkout holds on an LF one and back: line endings are not content."""
+    from fcpa import run_primary
+
+    specs = tmp_path / "specs"
+    shutil.copytree(ROOT / "docs" / "specs", specs)
+    for f in specs.glob("*.md"):
+        f.write_bytes(f.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", eol))
+    assert run_primary.verify_freeze(specs) is True
+
+
 def test_baselines_freeze3_tampered_hash_makes_the_runner_refuse(tmp_path):
     """A wrong sha256 in FREEZE3.md (the file itself unchanged) is refused, and so is a missing FREEZE3.md."""
     import re

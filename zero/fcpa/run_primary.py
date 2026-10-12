@@ -57,8 +57,10 @@ def verify_freeze(specs=SPECS):
         if not pairs:
             raise FreezeError(f"{freeze} lists no hashes")
         for name, want in pairs:
-            got = hashlib.sha256((Path(specs) / name).read_bytes()).hexdigest()
-            if got != want:
+            # line endings are not content: a pin taken on a CRLF checkout must hold on an LF one and back
+            lf = (Path(specs) / name).read_bytes().replace(b"\r\n", b"\n")
+            got = hashlib.sha256(lf).hexdigest()
+            if want not in (got, hashlib.sha256(lf.replace(b"\n", b"\r\n")).hexdigest()):
                 raise FreezeError(f"{name} changed after the freeze: sha256 {got} != frozen {want}")
     return True
 
