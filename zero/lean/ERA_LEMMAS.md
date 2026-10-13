@@ -1,6 +1,7 @@
 # Era lemmas L38–L41: statements, proofs, status
 
-Lean 4 (`leanprover/lean4:v4.7.0`, Mathlib v4.7.0 tag `a45ae63`), files `FCPA/L38_*`, `L39_*`, `L39c_*`, `L40_*`, `L41_*`.
+Lean 4 (`leanprover/lean4:v4.7.0`, Mathlib v4.7.0 tag `a45ae63`), files `FCPA/L38_*`, `L39_*`, `L39c_*`, `L39d_*`, `L40_*`,
+`L41_*`, `L41b_*`, `L42_*`.
 `python check_no_sorry.py`: 0 sorry. Objects are the code in `zero/research/e0/` (`arms.py::fcpa`, `deciders.py::Soft`,
 `deciders.py::Momentum`), not an idealisation of it.
 
@@ -13,6 +14,9 @@ Lean 4 (`leanprover/lean4:v4.7.0`, Mathlib v4.7.0 tag `a45ae63`), files `FCPA/L3
 | L39 (consistency) | `log BF = -Div + Gain ± K`: divergence linear in evidence, Occam gain logarithmic | **PROVED** (deterministic); sampling bridge CITED | `L39.log_bf_sandwich`, `refuse_merge`, `accept_merge`, `same_law_merges`, `div_row_nonneg` |
 | L40 | No forgetting for count eras | **PROVED** (settled tokens); unconditional form FALSE | `L40.no_forgetting`, `untouched_era_unchanged`, `count_birth_old_unchanged` |
 | L41 | MOM is an HMM forward filter; switch cost `-log((α/2)Q(j,i))`, learned `Q` included | **PROVED** | `L41.mom_is_move`, `mom_eq_hmm_predict`, `mom_switch_cost`, `mom_regret_tail` |
+| L39 (threshold) | Merge iff `BF_j ≥ (j+1)(j+2)/δ`: P(any false merge, any pair, any time) ≤ δ; no uniform guarantee exists | **PROVED** (both) | `L39d.merge_false_alarm`, `bf_running_product`, `pred_ratio_evalue`, `no_uniform_merge_guarantee` |
+| L41b | Learned `Q`: within `(k-1) log(n+1)` of the best fixed kernel, any switch sequence | **PROVED**; parameter rate CITED | `L41b.learned_kernel_regret`, `laplace_regret`, `multinom_types` |
+| L42 | Shipped filter: log-space exact; HARD routing costs ≤ `log(θ + (1-θ)/ε)` per HARD step | **PROVED** | `L42.logBayes_exact`, `lse_shift_max`, `hard_cost`, `hard_regret` |
 
 ## L38: regret over a growing bank
 
@@ -74,8 +78,19 @@ fires when `log BF = log ML(C+D) - log ML(C) - log ML(D) > 0`.
 - `address_symm`: C addressing D's data ⇔ D addressing C's data. The rules cannot disagree.
 - `false_merge_le` / `false_split_le`: BF is an e-value: under the separate-eras model, `P(BF ≥ 1/δ) ≤ δ`; symmetric for
   splits. `seq_mass_one`: the sequential Dirichlet model is a probability model, so this applies.
-- **Finding:** the code's threshold `BF > 1` is `δ = 1`: no finite-sample guarantee (`threshold_one_vacuous`). Candidate
-  for a tournament: `log BF > log(1/δ)`.
+- **Finding:** the code's threshold `BF > 1` is `δ = 1`: no finite-sample guarantee (`threshold_one_vacuous`).
+
+**Threshold part (`L39d_MergeThreshold`).** Decided: replace `BF > 1` by `BF_j ≥ (j+1)(j+2)/δ`.
+- `bf_running_product`: as the forming era `D` gathers tokens, `BF(C, D_t)` is the running product of one-token ratios
+  `pred_{C+D}(x)/pred_D(x)`. `pred_ratio_evalue`: each ratio has mean exactly 1 under `D`'s own predictive.
+- `prodE_ville`: a running product of conditional e-values reaches `1/δ` with probability `≤ δ`, at any time.
+- `merge_false_alarm`: pairs indexed `j = 0, 1, …` as they appear (the bank grows); with `δ_j = δ/((j+1)(j+2))`,
+  P(some pair ever merges falsely) `≤ δ`. Cost: `log((j+1)(j+2)/δ)` nats of extra evidence (≈ 7.9 nats at j = 10,
+  δ = 0.05), against which `Div` grows linearly (L39c), so different laws are still refused and same laws still merge.
+- `no_uniform_merge_guarantee`: the merge probability is continuous in the two laws, so a rule that merges same-law
+  eras with probability `≥ 1-β` merges some *different*-law pairs with probability `> 1-β-ε`. A guarantee over every
+  pair of different laws is impossible; the prior-predictive one above is the strongest kind. A guarantee for laws
+  separated by a margin `Δ` would need method-of-types concentration (not formalised).
 
 **Consistency part (`L39c_MergeConsistency`).** Exact per-row decomposition
 `log ML(c) = maxll(c) + occam(c) + Θ(c)`:
@@ -135,6 +150,16 @@ zero diagonal, row-normalised), identity on tail experts.
 - **Learned Q:** the bound is pathwise with the kernel in force at each step, so learned `Q` is covered as is. Still open:
   how fast the learned `Q` approaches the true switch law.
 
+**Learned `Q` (`L41b_LearnedKernel`).** Row `j` of `Q` is the add-one estimator over the other eras, i.e. L39's
+predictive with `a = 1` on one context.
+- `learned_kernel_regret` / `laplace_regret`: on **any** switch sequence out of row `j`, the learned kernel's log loss is
+  at most the best fixed kernel's (in hindsight) plus `(k_j - 1) log(S_j + 1)`. Per switch: `O(k log S / S) → 0`.
+- With `mom_switch_cost`, MOM's kernel switch costs are within `Σ_j (k_j - 1) log(S_j + 1)` of what an oracle fixed `Q`
+  would pay. Holds when `Q` counts the comparator's own switches and the era set is fixed; `Q̂ → Q` in probability
+  needs Hoeffding and stays CITED.
+- Proof: method of types (`multinom_types`: `n! Π(c/n)^c ≤ Π c!`, via the binomial theorem) plus
+  `rise k n ≤ n!(n+1)^{k-1}` (Bernoulli) plus Gibbs (`L39.gibbs_row`).
+
 **What it explains (bound-level, not a loss identity).** Per switch along a learned cycle (`Q̃ ≤ 0.9` = `p_cycle`,
 α = 0.003), MOM pays `log(2/(αQ̃)) ≈ 6.6` nats, SOFT pays `log(N/α)`, `N` = eras + 2 tail experts ≈ 6–9. Bound-level saving
 per switch `log(NQ̃/2)` ≈ 1.0–1.4 nats. Segment length = `seg_min + Geom` with mean `seg_mean` (`bed.py`), T = 20 000:
@@ -147,3 +172,14 @@ per switch `log(NQ̃/2)` ≈ 1.0–1.4 nats. Segment length = `seg_min + Geom` w
 - Measured is 55–80% of the bound-level saving: bounds over-predict, as expected (learned `Q̃` starts flat).
 - The ratio matches: switches 199/57 = 3.5; measured gaps 0.0077/0.0022 = 3.5. The saving scales with the number of
   switches, as the theorem says.
+
+## L42: the filter as shipped (log-space, batched, HARD)
+
+- `lse_shift`, `lse_shift_max`: the max-shifted log-sum-exp is exact; every term lies in `(0,1]` and the sum in
+  `[1, n]`, so nothing overflows or underflows to zero.
+- `logBayes_exact`, `logLoss_exact`: `lu = lv + lP - lse(lv + lP)` and `-lse(lv + lP)` are exactly L38's Bayes step and
+  loss. Batching runs this per row. `lse_log`: a zero term must be masked (`-∞`), never written as a finite `log 0`.
+- `hard_cost`: answering with the top expert alone at weight `≥ θ` moves the step's log loss by at least `log θ` and at
+  most `log(θ + (1-θ)/ε)`, `ε` = floor on expert probabilities (the Dirichlet smoothing gives one).
+- `hard_regret`: HARD's cumulative loss = mixture's + at most `log(θ + (1-θ)/ε)` per HARD step, so L38 carries over.
+  At θ = 0.99 and ε = a/(n+Va) the term is small only when ε is not tiny: the floor is load-bearing.

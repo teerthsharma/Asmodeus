@@ -137,3 +137,14 @@ Source: `/mnt/project-files/prior-work/handwritten-notes-transcription.md` (both
 
 - E0d/E0e decider tournament (`VERDICT_TOURNAMENT.md`): **MOM wins**, 10/10 fresh seeds vs SOFT, all gates. Architecture of record = E0c era bank + MOM decider.
 - Next, ranked: E1 (in-context controls on the 4060) → E2 (language eras) → lemmas L38–L41 in Lean (L41: MOM regret as an HMM filter with learned transitions). Next fresh seeds start at 50.
+
+## Addendum 4 (post-freeze): E1 outcome and phases
+
+- E1 (`VERDICT_E1.md`): **C5 holds**. ERA beats every context-reading arm on 10 of 10 fresh seeds, REC and CYC-S alike. The best competitor, a 0.86M meta-trained transformer, has regret 0.46 vs ERA's 0.027 on REC. Limit: GRU-META did not learn in context under the frozen recipe.
+- Phases, from Seal:
+  - Phase 0 is research (done).
+  - Phase 1 is the engineering build, every lemma decided, and every Lean file run.
+  - Phase 2 is comparisons with small GPTs and other from-scratch models. Seal runs phase 2 later.
+- E2 (language) and every GPT comparison leave this program's queue.
+- The stage-by-stage roadmap and its gates live in `ROADMAP.md`.
+- Seeds 50–59 are used. The next fresh evaluation seeds start at 60.
