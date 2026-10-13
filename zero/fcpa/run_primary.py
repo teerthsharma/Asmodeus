@@ -20,6 +20,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
+from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -231,9 +232,12 @@ def fit_fcpa(XL, P, seed, pins=None):
     if lags:
         kw["n_lags"] = P["n_lags"]
     est = FCPARegressor(**kw)
-    for tr in XL:
-        est.partial_fit(tr)
-        end_trajectory(est)
+    # end_trajectory's _finalize runs outside the estimator's single-BLAS guard; a BLAS thread pool there made the
+    # fit ~12x slower on a busy machine (6 seed-3 trajectories: 41.8 s against 3.5 s), almost all of it in _shrink
+    with threadpool_limits(limits=1, user_api="blas"):
+        for tr in XL:
+            est.partial_fit(tr)
+            end_trajectory(est)
     return est
 
 
