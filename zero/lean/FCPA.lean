@@ -38,3 +38,6 @@ import FCPA.L39_MergeRule
 import FCPA.L39c_MergeConsistency
 import FCPA.L40_NoForgetting
 import FCPA.L41_Momentum
+import FCPA.L39d_MergeThreshold
+import FCPA.L41b_LearnedKernel
+import FCPA.L42_ShippedFilter
