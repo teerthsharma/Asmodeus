@@ -33,3 +33,8 @@ import FCPA.L06_SplitConformal
 import FCPA.L24c_Calibrator
 import FCPA.L16a_ExpRemainder
 import FCPA.L16_Holonomy
+import FCPA.L38_GrowingBankRegret
+import FCPA.L39_MergeRule
+import FCPA.L39c_MergeConsistency
+import FCPA.L40_NoForgetting
+import FCPA.L41_Momentum
