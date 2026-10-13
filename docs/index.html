@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asmodeus — a time traveller on a chronal fluid</title>
+<meta name="description" content="A new machine-learning architecture: a softmax decider that answers alone and goes back to an era when it needs that era's knowledge, over a fluid of era weights that moves with momentum. Preregistered, measured on fresh seeds, its lemmas proved in Lean.">
+<meta name="author" content="Teerth Sharma">
+<link rel="canonical" href="https://blog.teerth.dev/asmodeus/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Asmodeus — a time traveller on a chronal fluid">
+<meta property="og:description" content="A softmax decider over eras of the past, with momentum. 11× lower regret than the best owned learner, 15× lower than a meta-trained transformer, no forgetting, seven lemmas in Lean.">
+<meta property="og:url" content="https://blog.teerth.dev/asmodeus/">
+<meta property="og:image" content="https://teerth.dev/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%230a6b8a' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%230a6b8a'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #fdfdfc;
+    --fg: #1b1b19;
+    --muted: #5f5f58;
+    --rule: #dedcd5;
+    --accent: #0a6b8a;
+    --warn: #a2451b;
+    --panel: #f4f3ee;
+    --panel-rule: #e2e0d8;
+    --law0: #b9d7e2;
+    --law1: #e7c9a9;
+    --law2: #c9d9b4;
+    --law3: #d9c3dc;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --serif: Iowan Old Style, "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14151a;
+      --fg: #e3e2dd;
+      --muted: #9d9c95;
+      --rule: #2b2d34;
+      --accent: #6fc2dd;
+      --warn: #e08a5c;
+      --panel: #1b1d23;
+      --panel-rule: #2b2d34;
+      --law0: #23485a;
+      --law1: #5a4127;
+      --law2: #3b4f2c;
+      --law3: #4d3752;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--serif);
+    font-size: 18px;
+    line-height: 1.62;
+    text-rendering: optimizeLegibility;
+  }
+  .wrap { max-width: 46rem; margin: 0 auto; padding: 3.5rem 1.25rem 5rem; }
+  header.masthead { border-bottom: 1px solid var(--rule); padding-bottom: 2rem; margin-bottom: 2.5rem; }
+  h1 {
+    font-size: clamp(2.1rem, 7vw, 3.1rem);
+    line-height: 1.05;
+    margin: 0 0 .6rem;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+  h1 .glyph { color: var(--muted); font-weight: 400; }
+  .thesis { font-size: 1.12rem; margin: 0 0 1.2rem; }
+  .byline { font-size: .92rem; color: var(--muted); margin: 0; }
+  .byline a { color: var(--accent); }
+  h2 {
+    font-size: 1.42rem;
+    margin: 3.2rem 0 .9rem;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--rule);
+  }
+  h3 { font-size: 1.08rem; margin: 2rem 0 .6rem; font-weight: 600; }
+  p { margin: 0 0 1rem; }
+  a { color: var(--accent); }
+  strong { font-weight: 600; }
+  code, kbd, pre { font-family: var(--mono); }
+  code { font-size: .86em; background: var(--panel); padding: .1em .3em; border-radius: 3px; }
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--panel-rule);
+    border-radius: 4px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: .78rem;
+    line-height: 1.5;
+    margin: 0 0 1.4rem;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  blockquote {
+    margin: 0 0 1.2rem;
+    padding: .2rem 0 .2rem 1.1rem;
+    border-left: 3px solid var(--rule);
+    color: var(--fg);
+    font-style: italic;
+  }
+  blockquote p:last-child { margin-bottom: 0; }
+  blockquote cite { display: block; font-style: normal; font-size: .85rem; color: var(--muted); margin-top: .3rem; }
+  .scroll { overflow-x: auto; margin: 0 0 1.4rem; border: 1px solid var(--panel-rule); border-radius: 4px; }
+  table { border-collapse: collapse; width: 100%; font-size: .84rem; font-family: var(--mono); }
+  caption { caption-side: top; text-align: left; padding: .7rem 1rem .2rem; color: var(--muted); font-family: var(--serif); font-size: .88rem; }
+  th, td { padding: .45rem .85rem; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--rule); }
+  th:first-child, td:first-child { text-align: left; }
+  td.l, th.l { text-align: left; white-space: normal; }
+  thead th { color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--fg); }
+  tbody tr:last-child td { border-bottom: none; }
+  .num { font-variant-numeric: tabular-nums; }
+  tr.peak td { font-weight: 700; }
+  tr.peak td:first-child::after { content: "  ← winner"; font-weight: 400; color: var(--muted); }
+  .lede { font-size: 1.05rem; color: var(--fg); }
+  .note {
+    border-left: 3px solid var(--accent);
+    background: var(--panel);
+    padding: .9rem 1.1rem;
+    margin: 0 0 1.4rem;
+    font-size: .96rem;
+  }
+  .note.caution { border-left-color: var(--warn); }
+  .note p:last-child { margin-bottom: 0; }
+  .theorem { border-top: 1px solid var(--rule); padding-top: 1.2rem; margin-top: 2rem; }
+  .statement { font-size: 1.02rem; }
+  .display {
+    font-family: var(--mono);
+    font-size: .95rem;
+    text-align: center;
+    padding: .9rem 0;
+    margin: 0 0 1.2rem;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .proof { font-size: .95rem; color: var(--fg); }
+  .meta { font-size: .9rem; color: var(--muted); }
+  .status { font-family: var(--mono); font-size: .8rem; letter-spacing: .02em; padding: .05em .4em; border-radius: 3px; border: 1px solid var(--rule); color: var(--muted); white-space: nowrap; }
+  .status.ok { color: var(--accent); border-color: var(--accent); }
+  .status.open { color: var(--warn); border-color: var(--warn); }
+  nav.toc { font-size: .92rem; margin-bottom: 1rem; }
+  nav.toc ol { margin: 0; padding-left: 1.3rem; }
+  nav.toc li { margin: .15rem 0; }
+  ul.plain { padding-left: 1.2rem; }
+  ul.plain li { margin: 0 0 .5rem; }
+  svg.chain, svg.curve { width: 100%; height: auto; display: block; margin: 0 0 .6rem; color: var(--fg); }
+  svg text { font-family: var(--mono); font-size: 11px; fill: var(--fg); }
+  svg .tick, svg .lab { fill: var(--muted); font-size: 10.5px; }
+  svg .big { font-family: var(--serif); font-size: 14px; }
+  svg .grid { stroke: var(--rule); stroke-width: 1; }
+  svg .box { fill: var(--panel); stroke: var(--panel-rule); }
+  svg .dash { fill: none; stroke: var(--muted); stroke-dasharray: 4 3; }
+  svg .arr { fill: none; stroke: var(--muted); stroke-width: 1.3; }
+  svg .acc { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+  svg .bar { fill: var(--accent); }
+  svg .bar.dim { fill: var(--muted); opacity: .55; }
+  svg .bocpd { fill: none; stroke: var(--warn); stroke-width: 1.4; }
+  svg .era { fill: none; stroke: var(--accent); stroke-width: 1.8; }
+  svg .bocpd-t { fill: var(--warn); }
+  svg .era-t { fill: var(--accent); }
+  svg .law0 { fill: var(--law0); } svg .law1 { fill: var(--law1); }
+  svg .law2 { fill: var(--law2); } svg .law3 { fill: var(--law3); }
+  .figcap { font-size: .85rem; color: var(--muted); margin: 0 0 1.6rem; }
+  footer { margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--rule); font-size: .9rem; color: var(--muted); }
+  @media (max-width: 34rem) {
+    body { font-size: 17px; }
+    .wrap { padding: 2.2rem 1rem 3.5rem; }
+    pre { font-size: .7rem; }
+    .display { font-size: .8rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <h1>Asmodeus <span class="glyph">०</span></h1>
+  <p class="thesis"><strong>A new machine-learning architecture. A softmax decider, the time
+  traveller, answers alone, and goes back to an era of the past when it needs that era's
+  knowledge. Its weight over the eras is a fluid that moves with momentum.</strong></p>
+  <p class="thesis">On streams whose laws recur, its regret is 11× below the best learner we
+  built to compete with it, and 15× below a meta-trained transformer that reads the regime from
+  its context. It forgets nothing on re-entry and invents no eras on stationary data. The seven
+  lemmas behind the bank and the decider are checked in Lean. Every bar was frozen by sha256
+  before its result existed.</p>
+  <p class="byline">
+    <strong>Invented by <a href="https://teerth.dev/">Teerth Sharma</a></strong> ·
+    <a href="https://github.com/teerthsharma/Asmodeus">github.com/teerthsharma/Asmodeus</a> ·
+    teerths57@gmail.com · Attribution License
+  </p>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#idea">The idea, in the notes' own words</a></li>
+    <li><a href="#fluid">The chronal fluid as an update rule</a></li>
+    <li><a href="#eras">Eras: birth, merge and the novelty expert</a></li>
+    <li><a href="#return"><strong>Going back in time, measured</strong></a></li>
+    <li><a href="#tournament">The decider tournament</a></li>
+    <li><a href="#context"><strong>Against models that read their context</strong></a></li>
+    <li><a href="#theorems">The theorems, in Lean</a></li>
+    <li><a href="#explain">What the theorems explain</a></li>
+    <li><a href="#roadmap">Where it stands</a></li>
+    <li><a href="#method">Method</a></li>
+    <li><a href="#code">Running it</a></li>
+    <li><a href="#sources">Sources</a></li>
+    <li><a href="#limits">Limits</a></li>
+  </ol>
+</nav>
+
+<div class="note caution">
+  <p><strong>Every result on this page is on synthetic streams built to favour eras.</strong>
+  They are switching order-1 Markov sources over 16 symbols. They show that the mechanism works
+  where it should. They say nothing yet about language. Real text is stage 7 of the
+  <a href="#roadmap">roadmap</a>, and the comparison with small GPTs is stage 8.</p>
+</div>
+
+<h2 id="idea">1 · The idea, in the notes' own words</h2>
+
+<p class="lede">The architecture starts from two pages of handwritten notes. Every term on this
+page is defined from them, and the full transcription is in the repository
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/origin_notes_transcription.md"><code>origin_notes_transcription.md</code></a>).</p>
+
+<blockquote>
+  <p>our softmax is a TT (Time Traveller), is smart alone, but when he needs knowledge of a
+  particular era he goes back in time; his TT contains only results of history; the era
+  contains knowledge.</p>
+  <cite>“That if we combine”, page 3</cite>
+</blockquote>
+
+<blockquote>
+  <p>we will provide the time travel a dimensional phase; when this momentum will be like in a
+  dimension of “liquid” … path of softmax … fluid chrononal predictive architecture (after
+  multiplication and normalisation).</p>
+  <cite>“That if we combine”, page 3</cite>
+</blockquote>
+
+<p>Three objects follow, and nothing else is assumed.</p>
+
+<ul class="plain">
+  <li><strong>Era.</strong> A stretch of the stream with one fixed law, and the small statistical
+  model that holds that law. Here an era is a 16 × 16 table of transition counts.</li>
+  <li><strong>TT, the time traveller.</strong> The softmax decider. It keeps only results of
+  history, a weight per era. It answers with its blend, or alone with one era, and it returns to
+  an old era the moment the stream does.</li>
+  <li><strong>Chronal fluid data density.</strong> <code>w_t</code>, the TT's weight over the
+  eras at time <code>t</code>. It is where the TT stands in the “liquid of eras”. Its path is the
+  “path of softmax”, and it carries momentum.
+  (<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/PROGRAM.md">PROGRAM.md</a>, Addendum 2.)</li>
+</ul>
+
+<svg class="chain" viewBox="0 0 640 270" role="img" aria-label="The stream credits counts to an era bank of four count tables, a 32-token window and a BOCPD novelty expert. Each expert's likelihood feeds the TT, a softmax weight vector over the bank. The TT moves its weight along a learned era-to-era kernel, multiplies by the likelihood, normalises, and answers.">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+    </marker>
+    <marker id="ahc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+  <text class="big" x="20" y="22">stream</text>
+  <rect class="box" x="14" y="112" width="104" height="34" rx="3"/>
+  <text x="66" y="133" text-anchor="middle">x₁ x₂ … xₜ</text>
+  <text class="lab" x="66" y="166" text-anchor="middle">one law per era,</text>
+  <text class="lab" x="66" y="180" text-anchor="middle">laws recur</text>
+
+  <text class="big" x="170" y="22">era bank</text>
+  <rect class="dash" x="164" y="34" width="196" height="186" rx="4"/>
+  <rect class="box" x="176" y="46" width="172" height="22" rx="2"/><text x="186" y="61">era 1 · count table</text>
+  <rect class="box" x="176" y="74" width="172" height="22" rx="2"/><text x="186" y="89">era 2 · count table</text>
+  <rect class="box" x="176" y="102" width="172" height="22" rx="2"/><text x="186" y="117">era 3 · count table</text>
+  <rect class="box" x="176" y="130" width="172" height="22" rx="2"/><text x="186" y="145">era 4 · count table</text>
+  <rect class="box" x="176" y="162" width="172" height="22" rx="2"/><text x="186" y="177">window · last 32</text>
+  <rect class="box" x="176" y="190" width="172" height="22" rx="2"/><text x="186" y="205">BOCPD · novelty</text>
+  <text class="lab" x="170" y="238">birth: no stored era fits</text>
+  <text class="lab" x="170" y="252">merge: Bayes factor &gt; 1</text>
+
+  <line class="arr" x1="120" y1="129" x2="160" y2="129" marker-end="url(#ah)"/>
+  <text class="lab" x="140" y="121" text-anchor="middle">credit</text>
+
+  <line class="arr" x1="362" y1="129" x2="412" y2="129" marker-end="url(#ah)"/>
+  <text class="lab" x="387" y="121" text-anchor="middle">Pₜ(i)</text>
+
+  <text class="big" x="420" y="22">TT · softmax over the bank</text>
+  <line class="grid" x1="420" y1="200" x2="620" y2="200"/>
+  <rect class="bar" x="428" y="78" width="22" height="122"/>
+  <rect class="bar dim" x="460" y="186" width="22" height="14"/>
+  <rect class="bar dim" x="492" y="190" width="22" height="10"/>
+  <rect class="bar dim" x="524" y="170" width="22" height="30"/>
+  <rect class="bar dim" x="556" y="192" width="22" height="8"/>
+  <rect class="bar dim" x="588" y="184" width="22" height="16"/>
+  <text class="tick" x="439" y="214" text-anchor="middle">1</text><text class="tick" x="471" y="214" text-anchor="middle">2</text>
+  <text class="tick" x="503" y="214" text-anchor="middle">3</text><text class="tick" x="535" y="214" text-anchor="middle">4</text>
+  <text class="tick" x="567" y="214" text-anchor="middle">win</text><text class="tick" x="599" y="214" text-anchor="middle">nov</text>
+  <text x="520" y="232" text-anchor="middle">wₜ, the chronal fluid</text>
+  <path class="acc" d="M450,70 C490,30 520,40 535,160" marker-end="url(#ahc)"/>
+  <text class="lab" x="630" y="46" text-anchor="end" style="fill: var(--accent)">momentum along Q̃</text>
+  <text class="lab" x="520" y="250" text-anchor="middle">× likelihood, normalise,</text>
+  <text class="lab" x="520" y="264" text-anchor="middle">answer p(xₜ)</text>
+</svg>
+<p class="figcap">The architecture as it runs today. The bank and the decider are separate: the bank
+decides which eras exist, and the TT decides how much weight each one gets. Bar heights are
+illustrative.</p>
+
+<h2 id="fluid">2 · The chronal fluid as an update rule</h2>
+
+<p>“After multiplication and normalisation” is a Bayes step. Each token, the TT does three
+things to its weight vector <code>w_t</code> over the pool of experts (the eras, the window
+model and the novelty expert). This is the code in
+<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/e0/deciders.py"><code>deciders.py</code></a>, line for line, and it is the
+model the Lean proofs are about.</p>
+
+<div class="display">move     vₜ = (1 − α)·wₜ + (α/2)·1/n + (α/2)·wₜ Q̃
+predict  pₜ = Σᵢ vₜ(i) Pₜ(i)
+update   wₜ₊₁(i) = vₜ(i) Pₜ(i) / pₜ</div>
+
+<ul class="plain">
+  <li><strong>Move</strong> is where momentum lives. A fraction <code>α</code> of the weight is
+  shared out. Half spreads uniformly. The other half travels along <code>Q̃</code>, a kernel
+  learned from the era switches the bank has seen (switch counts plus one, zero diagonal, rows
+  normalised). Weight flows to the era that usually comes next. That is “where it came from
+  predicts where it goes”.</li>
+  <li><strong>Predict</strong> answers with the blend. <code>Pₜ(i)</code> is expert
+  <code>i</code>'s probability of the token that arrives.</li>
+  <li><strong>Update</strong> multiplies by the likelihood and normalises. Weight concentrates
+  on whichever era explains the recent tokens.</li>
+</ul>
+
+<p>The incumbent it replaced, SOFT, is the same rule with all of <code>α</code> spread
+uniformly (Herbster–Warmuth fixed share). The winner is called MOM. With <code>Q̃</code> set to
+the identity it reduces to SOFT at <code>α/2</code>, and with <code>Q̃</code> uniform it reduces
+to SOFT at <code>α</code>; both identities are proved
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L41_Momentum.lean"><code>L41_Momentum.lean</code></a>). The deployed
+setting is <code>α = 0.003</code>.</p>
+
+<h2 id="eras">3 · Eras: birth, merge and the novelty expert</h2>
+
+<p>The bank runs one bookkeeping loop, shared by every decider. It lives in
+<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/e0/arms.py"><code>arms.py</code></a> (<code>fcpa</code>).</p>
+
+<ul class="plain">
+  <li><strong>Detect.</strong> An e-detector (Shin–Ramdas–Rinaldo) watches whether the active
+  era still explains the stream. Ville's inequality bounds a false alarm by
+  <code>δ = 0.05</code>.</li>
+  <li><strong>Wait for evidence.</strong> No decision before 64 transitions have accumulated
+  since the change-time estimate.</li>
+  <li><strong>Address.</strong> The segment is scored by its prequential likelihood under every
+  stored era and under a fresh one. The best stored era wins a JUMP back to it. A fresh era wins
+  a BIRTH.</li>
+  <li><strong>Merge.</strong> After each decision, the pair of eras with the highest
+  Dirichlet–multinomial Bayes factor merges while that factor exceeds 1.</li>
+  <li><strong>Novelty expert.</strong> BOCPD sits in the TT's pool, so a law that has never
+  been seen costs little.</li>
+</ul>
+
+<p>It took three preregistered rounds to get the bank right, each on fresh seeds. The table is
+the record, failures included (<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/VERDICT_E0.md">VERDICT_E0.md</a>).</p>
+
+<div class="scroll">
+<table>
+  <caption>Bars frozen before each run. B1: regret ≤ 0.5 × best owned learner. B2: no cost when nothing recurs. B3: era count tracks the number of laws. B4: no forgetting.</caption>
+  <thead>
+    <tr><th>bar</th><th>E0 · seeds 0–9</th><th>E0b · seeds 10–19</th><th>E0c · seeds 20–29</th></tr>
+  </thead>
+  <tbody class="num">
+    <tr><td>B1 regret</td><td>pass 10/10</td><td>pass 10/10</td><td>pass 10/10 · 0.0277 vs 0.3056</td></tr>
+    <tr><td>B2 no recurrence</td><td>fail · 3.71×</td><td>pass · 1.17×</td><td>pass · 1.18×</td></tr>
+    <tr><td>B3 era count</td><td>fail · 7–11 eras</td><td>fail · 4–8 eras</td><td>pass · 4 eras on 8/10</td></tr>
+    <tr><td>B4 re-entry</td><td>pass · 0.086</td><td>pass · 0.084</td><td>pass · 0.084 vs 0.347</td></tr>
+  </tbody>
+</table>
+</div>
+
+<ul class="plain">
+  <li><strong>E0b</strong> added BOCPD as novelty expert, which fixed B2.</li>
+  <li><strong>E0c</strong> added the global merge and the 64-transition wait, which fixed B3.
+  The bank now forms exactly 4 eras for 4 laws on 8 of 10 seeds and 5 on the other 2, with no
+  loss cost.</li>
+  <li>Across 20 stationary null streams, the bank invented <strong>0</strong> eras.</li>
+</ul>
+
+<h2 id="return">4 · Going back in time, measured</h2>
+
+<p class="lede">This is the TT's defining move, seen on a real run. The stream below switches
+between four laws, and fifteen of its first nineteen segments return to a law already seen.</p>
+
+<svg class="curve" viewBox="0 0 640 310" role="img" aria-label="Excess loss over the oracle, first 6,000 tokens of the REC stream, seed 40. Each coloured band on top is one of four recurring laws. BOCPD spikes at every switch and relearns slowly; the era bank returns to the stored era and stays near zero.">
+<rect class="law3" x="60.0" y="30" width="15.0" height="14"/>
+<rect class="law0" x="75.0" y="30" width="50.9" height="14"/>
+<rect class="law3" x="125.9" y="30" width="23.0" height="14"/>
+<rect class="law0" x="149.0" y="30" width="10.0" height="14"/>
+<rect class="law2" x="159.0" y="30" width="23.4" height="14"/>
+<rect class="law3" x="182.4" y="30" width="12.0" height="14"/>
+<rect class="law1" x="194.3" y="30" width="11.9" height="14"/>
+<rect class="law2" x="206.2" y="30" width="11.5" height="14"/>
+<rect class="law3" x="217.7" y="30" width="5.8" height="14"/>
+<rect class="law1" x="223.6" y="30" width="103.0" height="14"/>
+<rect class="law2" x="326.6" y="30" width="6.9" height="14"/>
+<rect class="law1" x="333.5" y="30" width="8.7" height="14"/>
+<rect class="law2" x="342.2" y="30" width="50.9" height="14"/>
+<rect class="law1" x="393.1" y="30" width="91.4" height="14"/>
+<rect class="law3" x="484.5" y="30" width="73.0" height="14"/>
+<rect class="law2" x="557.5" y="30" width="7.3" height="14"/>
+<rect class="law1" x="564.8" y="30" width="24.3" height="14"/>
+<rect class="law2" x="589.1" y="30" width="34.4" height="14"/>
+<rect class="law0" x="623.5" y="30" width="2.5" height="14"/>
+<text x="54" y="41" class="lab" text-anchor="end">true law</text>
+<line class="grid" x1="60" x2="626" y1="256.0" y2="256.0"/><text class="tick" x="54" y="260.0" text-anchor="end">0.00</text>
+<line class="grid" x1="60" x2="626" y1="206.0" y2="206.0"/><text class="tick" x="54" y="210.0" text-anchor="end">0.25</text>
+<line class="grid" x1="60" x2="626" y1="156.0" y2="156.0"/><text class="tick" x="54" y="160.0" text-anchor="end">0.50</text>
+<line class="grid" x1="60" x2="626" y1="106.0" y2="106.0"/><text class="tick" x="54" y="110.0" text-anchor="end">0.75</text>
+<line class="grid" x1="60" x2="626" y1="56.0" y2="56.0"/><text class="tick" x="54" y="60.0" text-anchor="end">1.00</text>
+<text class="tick" x="60.0" y="272" text-anchor="start">0</text>
+<text class="tick" x="154.3" y="272" text-anchor="middle">1,000</text>
+<text class="tick" x="248.7" y="272" text-anchor="middle">2,000</text>
+<text class="tick" x="343.0" y="272" text-anchor="middle">3,000</text>
+<text class="tick" x="437.3" y="272" text-anchor="middle">4,000</text>
+<text class="tick" x="531.7" y="272" text-anchor="middle">5,000</text>
+<text class="tick" x="626.0" y="272" text-anchor="end">6,000</text>
+<text class="tick" x="350" y="290" text-anchor="middle">token</text>
+<text class="tick" transform="translate(14 156.0) rotate(-90)" text-anchor="middle">nats / token over oracle</text>
+<path class="bocpd" d="M69.4,255.5 L70.8,255.5 L72.3,255.6 L73.7,255.5 L75.1,251.4 L76.5,244.6 L77.9,244.1 L79.3,244.3 L80.8,244.2 L82.2,244.2 L83.6,244.2 L85.0,255.1 L86.4,255.5 L87.8,255.5 L89.2,255.0 L90.7,255.6 L92.1,255.4 L93.5,255.4 L94.9,255.4 L96.3,255.5 L97.7,255.4 L99.1,255.4 L100.6,255.3 L102.0,255.4 L103.4,255.6 L104.8,255.3 L106.2,255.3 L107.6,255.5 L109.1,255.5 L110.5,255.5 L111.9,255.5 L113.3,255.4 L114.7,255.5 L116.1,255.5 L117.5,255.5 L119.0,255.5 L120.4,255.4 L121.8,255.5 L123.2,255.5 L124.6,255.5 L126.0,248.3 L127.4,223.2 L128.9,194.7 L130.3,185.9 L131.7,176.8 L133.1,174.1 L134.5,164.8 L135.9,172.8 L137.4,193.1 L138.8,211.7 L140.2,222.0 L141.6,223.2 L143.0,226.8 L144.4,228.3 L145.8,223.1 L147.3,226.7 L148.7,231.3 L150.1,197.6 L151.5,191.0 L152.9,160.2 L154.3,151.4 L155.7,133.4 L157.2,108.5 L158.6,95.1 L160.0,104.3 L161.4,132.9 L162.8,165.0 L164.2,190.3 L165.7,206.9 L167.1,227.4 L168.5,249.5 L169.9,257.7 L171.3,255.2 L172.7,254.2 L174.1,254.0 L175.6,254.0 L177.0,253.7 L178.4,253.3 L179.8,253.1 L181.2,255.5 L182.6,244.5 L184.0,225.7 L185.5,202.0 L186.9,175.5 L188.3,158.7 L189.7,152.4 L191.1,145.0 L192.5,161.5 L194.0,163.8 L195.4,180.7 L196.8,198.1 L198.2,206.3 L199.6,215.7 L201.0,225.2 L202.4,241.4 L203.9,247.9 L205.3,255.0 L206.7,240.0 L208.1,206.6 L209.5,184.0 L210.9,169.9 L212.3,150.3 L213.8,133.7 L215.2,123.2 L216.6,134.0 L218.0,166.6 L219.4,165.7 L220.8,148.3 L222.3,152.4 L223.7,165.8 L225.1,137.8 L226.5,138.4 L227.9,143.5 L229.3,154.1 L230.7,149.7 L232.2,157.1 L233.6,173.3 L235.0,194.8 L236.4,183.9 L237.8,190.2 L239.2,207.4 L240.6,213.7 L242.1,234.7 L243.5,238.4 L244.9,238.5 L246.3,245.1 L247.7,242.4 L249.1,244.4 L250.6,246.3 L252.0,244.1 L253.4,242.4 L254.8,250.7 L256.2,249.0 L257.6,250.9 L259.0,253.6 L260.5,246.1 L261.9,245.2 L263.3,247.2 L264.7,239.2 L266.1,237.2 L267.5,236.4 L268.9,240.6 L270.4,241.4 L271.8,243.8 L273.2,249.4 L274.6,255.0 L276.0,256.6 L277.4,258.1 L278.9,259.0 L280.3,253.7 L281.7,252.0 L283.1,251.7 L284.5,250.5 L285.9,250.2 L287.3,251.2 L288.8,255.2 L290.2,256.3 L291.6,257.7 L293.0,256.3 L294.4,254.2 L295.8,254.0 L297.2,255.6 L298.7,253.5 L300.1,252.2 L301.5,252.0 L302.9,255.8 L304.3,254.4 L305.7,253.9 L307.2,251.7 L308.6,253.2 L310.0,252.4 L311.4,247.8 L312.8,247.0 L314.2,247.5 L315.6,246.0 L317.1,247.1 L318.5,250.4 L319.9,252.4 L321.3,253.2 L322.7,253.8 L324.1,255.3 L325.5,255.2 L327.0,246.7 L328.4,212.9 L329.8,195.3 L331.2,183.0 L332.6,163.1 L334.0,125.6 L335.5,105.8 L336.9,117.6 L338.3,120.4 L339.7,109.6 L341.1,107.8 L342.5,112.2 L343.9,126.3 L345.4,123.4 L346.8,120.4 L348.2,115.8 L349.6,121.7 L351.0,120.2 L352.4,138.5 L353.8,136.1 L355.3,162.3 L356.7,179.8 L358.1,198.9 L359.5,194.6 L360.9,208.4 L362.3,211.9 L363.8,211.4 L365.2,211.5 L366.6,223.5 L368.0,217.3 L369.4,226.5 L370.8,227.8 L372.2,232.6 L373.7,235.9 L375.1,235.7 L376.5,228.6 L377.9,236.0 L379.3,232.3 L380.7,240.9 L382.1,243.1 L383.6,246.0 L385.0,238.8 L386.4,236.5 L387.8,242.7 L389.2,242.0 L390.6,234.1 L392.1,229.1 L393.5,220.4 L394.9,189.0 L396.3,168.1 L397.7,140.7 L399.1,129.5 L400.5,114.4 L402.0,108.9 L403.4,126.2 L404.8,151.5 L406.2,160.1 L407.6,181.8 L409.0,178.2 L410.4,188.2 L411.9,190.4 L413.3,196.0 L414.7,197.8 L416.1,202.2 L417.5,210.6 L418.9,217.8 L420.4,228.7 L421.8,233.8 L423.2,235.4 L424.6,240.1 L426.0,247.2 L427.4,241.4 L428.8,242.4 L430.3,241.8 L431.7,238.3 L433.1,241.9 L434.5,233.3 L435.9,223.7 L437.3,229.8 L438.7,224.3 L440.2,226.6 L441.6,226.9 L443.0,231.9 L444.4,239.9 L445.8,232.3 L447.2,236.4 L448.7,230.0 L450.1,234.6 L451.5,239.2 L452.9,227.7 L454.3,226.7 L455.7,227.8 L457.1,229.0 L458.6,229.7 L460.0,226.4 L461.4,229.7 L462.8,240.0 L464.2,243.5 L465.6,251.2 L467.0,250.7 L468.5,254.2 L469.9,251.0 L471.3,250.3 L472.7,251.6 L474.1,247.5 L475.5,241.9 L477.0,243.5 L478.4,246.1 L479.8,244.9 L481.2,245.3 L482.6,240.0 L484.0,246.3 L485.4,218.1 L486.9,189.1 L488.3,188.4 L489.7,176.9 L491.1,164.9 L492.5,145.5 L493.9,121.2 L495.3,165.9 L496.8,172.9 L498.2,170.9 L499.6,174.8 L501.0,192.7 L502.4,210.3 L503.8,215.3 L505.3,198.6 L506.7,208.6 L508.1,226.1 L509.5,213.1 L510.9,213.0 L512.3,211.4 L513.7,227.4 L515.2,226.6 L516.6,222.8 L518.0,227.2 L519.4,225.9 L520.8,225.9 L522.2,233.6 L523.6,229.3 L525.1,222.7 L526.5,217.7 L527.9,216.8 L529.3,226.2 L530.7,230.3 L532.1,231.0 L533.6,235.3 L535.0,242.6 L536.4,248.0 L537.8,245.6 L539.2,242.0 L540.6,241.7 L542.0,245.2 L543.5,243.4 L544.9,240.4 L546.3,241.8 L547.7,249.1 L549.1,244.8 L550.5,237.9 L551.9,239.9 L553.4,243.9 L554.8,245.4 L556.2,244.5 L557.6,233.9 L559.0,214.0 L560.4,188.2 L561.9,163.3 L563.3,151.0 L564.7,136.5 L566.1,91.8 L567.5,97.6 L568.9,85.8 L570.3,103.2 L571.8,89.2 L573.2,82.4 L574.6,97.7 L576.0,141.2 L577.4,158.1 L578.8,156.5 L580.2,171.0 L581.7,190.6 L583.1,199.9 L584.5,200.0 L585.9,194.0 L587.3,195.8 L588.7,206.3 L590.2,184.4 L591.6,165.6 L593.0,153.1 L594.4,144.1 L595.8,130.3 L597.2,120.1 L598.6,115.4 L600.1,142.4 L601.5,154.6 L602.9,161.8 L604.3,178.5 L605.7,182.9 L607.1,190.8 L608.5,203.8 L610.0,203.7 L611.4,210.6 L612.8,215.3 L614.2,216.2 L615.6,227.0 L617.0,217.5 L618.5,218.5 L619.9,219.0 L621.3,227.0 L622.7,231.0 L624.1,194.9 L625.5,162.0"/>
+<path class="era" d="M69.4,254.9 L70.8,254.9 L72.3,254.9 L73.7,255.7 L75.1,251.8 L76.5,243.0 L77.9,242.4 L79.3,242.6 L80.8,242.4 L82.2,242.3 L83.6,242.3 L85.0,254.8 L86.4,255.3 L87.8,255.4 L89.2,254.9 L90.7,255.6 L92.1,255.3 L93.5,255.3 L94.9,255.3 L96.3,255.3 L97.7,255.3 L99.1,255.3 L100.6,255.0 L102.0,255.3 L103.4,255.5 L104.8,255.2 L106.2,255.2 L107.6,255.3 L109.1,255.3 L110.5,255.3 L111.9,255.3 L113.3,255.3 L114.7,255.4 L116.1,255.4 L117.5,255.4 L119.0,255.4 L120.4,255.2 L121.8,255.4 L123.2,255.4 L124.6,255.4 L126.0,249.1 L127.4,247.7 L128.9,248.9 L130.3,248.6 L131.7,246.0 L133.1,246.4 L134.5,246.4 L135.9,254.6 L137.4,254.1 L138.8,252.6 L140.2,255.8 L141.6,255.5 L143.0,255.5 L144.4,255.5 L145.8,255.5 L147.3,255.5 L148.7,255.6 L150.1,243.1 L151.5,243.3 L152.9,243.5 L154.3,243.2 L155.7,242.9 L157.2,242.3 L158.6,253.8 L160.0,240.4 L161.4,232.8 L162.8,233.2 L164.2,232.9 L165.7,233.7 L167.1,234.5 L168.5,239.7 L169.9,255.6 L171.3,254.3 L172.7,253.6 L174.1,253.9 L175.6,253.9 L177.0,253.7 L178.4,253.2 L179.8,253.0 L181.2,255.3 L182.6,244.9 L184.0,241.9 L185.5,242.3 L186.9,243.2 L188.3,243.4 L189.7,243.8 L191.1,243.8 L192.5,257.4 L194.0,257.7 L195.4,242.0 L196.8,239.7 L198.2,239.4 L199.6,238.5 L201.0,238.2 L202.4,238.1 L203.9,242.2 L205.3,254.4 L206.7,240.5 L208.1,238.7 L209.5,239.2 L210.9,241.0 L212.3,237.9 L213.8,238.1 L215.2,238.5 L216.6,253.7 L218.0,250.9 L219.4,241.4 L220.8,242.2 L222.3,241.8 L223.7,243.0 L225.1,233.0 L226.5,230.0 L227.9,234.0 L229.3,235.2 L230.7,236.5 L232.2,236.0 L233.6,245.1 L235.0,244.6 L236.4,252.3 L237.8,255.7 L239.2,254.0 L240.6,254.0 L242.1,254.3 L243.5,254.6 L244.9,254.7 L246.3,254.8 L247.7,254.5 L249.1,254.5 L250.6,254.6 L252.0,254.4 L253.4,254.2 L254.8,254.3 L256.2,254.4 L257.6,254.6 L259.0,254.7 L260.5,254.6 L261.9,254.7 L263.3,255.0 L264.7,254.9 L266.1,254.9 L267.5,254.7 L268.9,254.7 L270.4,254.6 L271.8,254.7 L273.2,254.7 L274.6,255.1 L276.0,255.0 L277.4,255.2 L278.9,255.4 L280.3,255.3 L281.7,255.1 L283.1,255.1 L284.5,254.7 L285.9,255.1 L287.3,254.9 L288.8,255.0 L290.2,255.2 L291.6,255.2 L293.0,255.1 L294.4,254.9 L295.8,254.9 L297.2,255.2 L298.7,254.8 L300.1,254.8 L301.5,254.7 L302.9,255.0 L304.3,254.9 L305.7,254.9 L307.2,255.0 L308.6,254.9 L310.0,254.7 L311.4,254.7 L312.8,254.7 L314.2,254.6 L315.6,254.5 L317.1,254.7 L318.5,254.9 L319.9,255.1 L321.3,255.1 L322.7,255.2 L324.1,255.4 L325.5,255.2 L327.0,245.6 L328.4,241.5 L329.8,237.6 L331.2,239.1 L332.6,239.6 L334.0,227.1 L335.5,226.9 L336.9,241.4 L338.3,245.8 L339.7,244.3 L341.1,242.5 L342.5,231.1 L343.9,244.1 L345.4,243.4 L346.8,243.1 L348.2,243.2 L349.6,242.8 L351.0,243.5 L352.4,254.1 L353.8,255.2 L355.3,254.6 L356.7,255.1 L358.1,254.4 L359.5,252.7 L360.9,253.1 L362.3,254.1 L363.8,252.9 L365.2,252.6 L366.6,252.6 L368.0,252.2 L369.4,253.2 L370.8,252.0 L372.2,252.0 L373.7,252.7 L375.1,253.2 L376.5,253.9 L377.9,254.3 L379.3,253.9 L380.7,254.2 L382.1,253.6 L383.6,253.4 L385.0,253.1 L386.4,253.1 L387.8,252.6 L389.2,252.2 L390.6,252.6 L392.1,253.1 L393.5,245.2 L394.9,241.1 L396.3,241.6 L397.7,242.3 L399.1,243.6 L400.5,243.0 L402.0,243.3 L403.4,255.3 L404.8,255.2 L406.2,255.4 L407.6,254.6 L409.0,255.0 L410.4,255.3 L411.9,255.1 L413.3,255.3 L414.7,255.3 L416.1,255.2 L417.5,255.3 L418.9,255.4 L420.4,255.3 L421.8,255.2 L423.2,255.3 L424.6,255.6 L426.0,255.4 L427.4,255.3 L428.8,255.3 L430.3,255.5 L431.7,255.4 L433.1,255.3 L434.5,255.2 L435.9,255.1 L437.3,255.0 L438.7,255.1 L440.2,255.1 L441.6,255.1 L443.0,255.2 L444.4,255.3 L445.8,255.4 L447.2,255.4 L448.7,255.3 L450.1,255.2 L451.5,255.4 L452.9,255.3 L454.3,255.2 L455.7,255.4 L457.1,255.5 L458.6,255.8 L460.0,255.5 L461.4,255.4 L462.8,255.3 L464.2,255.0 L465.6,255.1 L467.0,255.1 L468.5,255.1 L469.9,255.1 L471.3,255.3 L472.7,255.5 L474.1,255.3 L475.5,254.9 L477.0,254.9 L478.4,254.8 L479.8,254.9 L481.2,251.0 L482.6,249.3 L484.0,249.3 L485.4,235.4 L486.9,236.0 L488.3,228.9 L489.7,223.8 L491.1,227.3 L492.5,228.9 L493.9,229.2 L495.3,243.2 L496.8,244.9 L498.2,250.0 L499.6,251.7 L501.0,251.1 L502.4,251.1 L503.8,251.5 L505.3,249.7 L506.7,251.0 L508.1,255.2 L509.5,253.9 L510.9,253.6 L512.3,251.6 L513.7,253.5 L515.2,252.9 L516.6,252.8 L518.0,253.7 L519.4,254.0 L520.8,254.6 L522.2,254.4 L523.6,254.4 L525.1,253.0 L526.5,252.6 L527.9,252.3 L529.3,252.8 L530.7,252.5 L532.1,252.6 L533.6,253.3 L535.0,254.9 L536.4,255.3 L537.8,256.7 L539.2,255.1 L540.6,255.4 L542.0,255.3 L543.5,255.2 L544.9,255.1 L546.3,255.0 L547.7,255.1 L549.1,255.1 L550.5,254.5 L551.9,254.5 L553.4,255.5 L554.8,255.7 L556.2,255.2 L557.6,245.8 L559.0,239.0 L560.4,238.3 L561.9,238.5 L563.3,234.3 L564.7,234.0 L566.1,221.2 L567.5,237.9 L568.9,239.1 L570.3,239.1 L571.8,238.0 L573.2,242.0 L574.6,255.6 L576.0,256.0 L577.4,255.3 L578.8,255.5 L580.2,255.7 L581.7,255.2 L583.1,256.1 L584.5,255.6 L585.9,255.4 L587.3,255.0 L588.7,254.9 L590.2,240.8 L591.6,240.9 L593.0,241.3 L594.4,241.0 L595.8,239.8 L597.2,239.3 L598.6,251.1 L600.1,252.6 L601.5,252.5 L602.9,252.6 L604.3,252.9 L605.7,253.6 L607.1,253.9 L608.5,254.8 L610.0,254.3 L611.4,254.1 L612.8,253.6 L614.2,253.4 L615.6,254.1 L617.0,253.8 L618.5,253.4 L619.9,254.1 L621.3,253.6 L622.7,254.6 L624.1,239.2 L625.5,239.0"/>
+<line class="bocpd" x1="60" x2="82" y1="12" y2="12"/><text class="key bocpd-t" x="88" y="16">BOCPD, best owned learner</text>
+<line class="era" x1="310" x2="332" y1="12" y2="12"/><text class="key era-t" x="338" y="16">era bank + MOM decider</text>
+</svg>
+<p class="figcap">Excess loss over an oracle that is told which law is active and keeps one count
+table per law, in nats per token,
+smoothed over 100 tokens. REC bed, seed 40 (an evaluation seed), first 6,000 of 20,000 tokens.
+Computed with the repository's own <code>arms.fcpa</code> and <code>deciders.Momentum</code>
+at <code>α = 0.003</code>; whole-stream regret 0.027 for the era bank against 0.301 for
+BOCPD.</p>
+
+<ul class="plain">
+  <li><strong>BOCPD</strong> detects each switch, then must relearn the law's 256
+  transition probabilities from nothing. Its loss spikes at every return to an old law and
+  decays slowly. On a law's first visit it learns as fast as the oracle, so there is no spike.</li>
+  <li><strong>The era bank</strong> detects the switch, finds the era that already holds this
+  law, and returns to it. The first 100 tokens after a re-entry cost 0.084 nats over the oracle,
+  against 0.693 for BOCPD and 0.840 for an exponential moving average
+  (<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/e0/RESULTS_E0c.md">RESULTS_E0c.md</a>).</li>
+  <li><strong>Nothing is overwritten.</strong> A birth leaves every old era's table exactly as
+  it was. This is a theorem (L40, below), and EMA is its contrast: it keeps
+  <code>λ^L</code> of an era's counts after <code>L</code> steps away.</li>
+</ul>
+
+<h2 id="tournament">5 · The decider tournament</h2>
+
+<p>Six deciders ran over the same bank, each tuned on its own seeds and evaluated paired on
+fresh ones. The rule, frozen in advance: a challenger replaces the incumbent only if it passes
+every gate and beats it on at least 8 of 10 seeds
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/E0e_PREREG.md">E0e_PREREG.md</a>).</p>
+
+<div class="scroll">
+<table>
+  <caption>Round 2, fresh seeds 40–49. Regret vs oracle, nats/token. Score = mean over REC, CYC, CYC-S, NOREC. G2: NOREC ≤ 1.25 × BOCPD.</caption>
+  <thead>
+    <tr><th>decider</th><th>REC</th><th>CYC</th><th>CYC-S</th><th>NOREC</th><th>score</th><th>G2</th></tr>
+  </thead>
+  <tbody class="num">
+    <tr class="peak"><td>MOM</td><td>0.0262</td><td>0.0281</td><td>0.1230</td><td>0.0170</td><td>0.0486</td><td>✓</td></tr>
+    <tr><td>MOM+GB</td><td>0.0277</td><td>0.0293</td><td>0.1215</td><td>0.0170</td><td>0.0489</td><td>✓</td></tr>
+    <tr><td>SOFT</td><td>0.0268</td><td>0.0303</td><td>0.1307</td><td>0.0184</td><td>0.0515</td><td>✓</td></tr>
+    <tr><td>HARD</td><td>0.0270</td><td>0.0304</td><td>0.1308</td><td>0.0183</td><td>0.0516</td><td>✓</td></tr>
+    <tr><td>TEMP</td><td>0.0276</td><td>0.0309</td><td>0.1251</td><td>0.0230</td><td>0.0516</td><td>✗</td></tr>
+    <tr><td>CTC</td><td>0.0282</td><td>0.0314</td><td>0.1245</td><td>0.0238</td><td>0.0520</td><td>✗</td></tr>
+    <tr><td>GBAYES</td><td>0.0283</td><td>0.0317</td><td>0.1302</td><td>0.0192</td><td>0.0523</td><td>✓</td></tr>
+    <tr><td>best owned</td><td>0.3027</td><td>0.3276</td><td>0.4253</td><td>0.0156</td><td></td><td></td></tr>
+  </tbody>
+</table>
+</div>
+
+<ul class="plain">
+  <li><strong>MOM beat SOFT on 10 of 10 seeds</strong>, score 0.0486 against 0.0515
+  (−5.6%). The gain is largest where eras follow a path: CYC −7%, CYC-S −6%, NOREC −8%. It ties
+  or wins on REC, where switches are uniform. Momentum is measurable.</li>
+  <li><strong>CTC, the closed time-like loop, adds nothing as a decider.</strong> Lemma L32
+  predicted it: a contracting loop has a tilt cap <code>w*_max / w*_min ≤ e^{2q} &lt; e²</code>,
+  so it cannot route sharply. It keeps its role as the provable return trip, not the answer.</li>
+  <li><strong>HARD answers with one era alone on 45.8% of steps</strong> at no measurable loss.
+  That is a compute result: about half the steps need one era.</li>
+  <li><strong>Round 1 is disclosed.</strong> Its tuning objective left out NOREC, which pushed
+  every decider to <code>α = 0.01</code> and broke G2 for five of six. Round 2 changed only the
+  objective and ran on fresh seeds
+  (<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/VERDICT_TOURNAMENT.md">VERDICT_TOURNAMENT.md</a>).</li>
+</ul>
+
+<h2 id="context">6 · Against models that read their context</h2>
+
+<p class="lede">The real competitor is in-context learning. A sequence model can, in principle,
+infer the current law from what it has just read, with no era machinery at all. E1 tests that
+directly (<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/VERDICT_E1.md">VERDICT_E1.md</a>,
+<a href="https://github.com/teerthsharma/Asmodeus/pull/24">PR #24</a>).</p>
+
+<div class="scroll">
+<table>
+  <caption>Fresh seeds 50–59. Regret vs oracle, nats/token, mean over seeds. Meta-trained arms saw 50M tokens of the bed family.</caption>
+  <thead>
+    <tr><th>arm</th><th>params</th><th>REC</th><th>CYC-S</th><th>NOREC</th></tr>
+  </thead>
+  <tbody class="num">
+    <tr class="peak"><td>ERA (E0c bank + MOM)</td><td>counts</td><td>0.027</td><td>0.148</td><td>0.019</td></tr>
+    <tr><td>TF-META transformer</td><td>0.86M</td><td>0.463</td><td>0.705</td><td>0.182</td></tr>
+    <tr><td>GRU-ONLINE-L</td><td>17k</td><td>0.688</td><td>0.660</td><td>0.750</td></tr>
+    <tr><td>GRU-ONLINE-S</td><td>1.9k</td><td>0.740</td><td>0.717</td><td>0.776</td></tr>
+    <tr><td>GRU-META</td><td>0.21M</td><td>1.023</td><td>1.048</td><td>0.714</td></tr>
+  </tbody>
+</table>
+</div>
+
+<ul class="plain">
+  <li><strong>Both bars pass on 10 of 10 seeds.</strong> On REC, ERA's regret is 6% of the
+  best neural arm's, 15× lower. On CYC-S it is 22% (worst seed 40%, bar 50%).</li>
+  <li><strong>Why: memory beyond the context window.</strong> The transformer sees 512 tokens.
+  On CYC-S that is about five segments, too few to estimate a 16 × 16 table. ERA keeps every
+  regime's counts for the whole stream and returns to them. The two models differ in what they
+  can remember, not in how well they were tuned.</li>
+  <li><strong>The weak arm is stated.</strong> GRU-META never learned in context (validation
+  2.69 nats against the oracle's 1.78). The bars did not depend on it: TF-META and GRU-ONLINE-L
+  were the best arms on every seed.</li>
+</ul>
+
+<h2 id="theorems">7 · The theorems, in Lean</h2>
+
+<p>The rule of this project: a measured result is not proven. <em>Proven</em> means a lemma and
+a Lean proof. Seven lemmas cover the bank, the decider and the filter as shipped. They are stated about the code that
+ran, not an idealisation of it. Lean 4 v4.7.0 with Mathlib; <code>check_no_sorry.py</code>
+reports 0 <code>sorry</code>
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/ERA_LEMMAS.md">ERA_LEMMAS.md</a>,
+<a href="https://github.com/teerthsharma/Asmodeus/pull/26">PR #26</a>,
+<a href="https://github.com/teerthsharma/Asmodeus/pull/30">PR #30</a>).</p>
+
+<div class="theorem">
+  <h3>L38 · Regret over a growing bank <span class="status ok">PROVED</span></h3>
+  <p class="statement">For every token sequence, every expert prediction sequence, every
+  schedule of births and merges, and every comparator path <code>cₜ</code> through the pool:</p>
+  <div class="display">Σₜ −log pₜ  ≤  Σₜ −log Pₜ(cₜ) + log(|s₀| / (1 − α + ρ)) + Σₜ costₜ</div>
+  <p class="proof">Staying on a path costs at most <code>log 1/(1−α)</code> per token, and the same per birth; a
+  switch costs at most <code>log(N/ρ)</code>. It holds for any linear decider, SOFT and MOM included.
+  The proof telescopes <code>−log pₜ</code> and shows each transport step keeps weight on the
+  comparator. Checked on 18 runs of the real code: on NOREC the bound is nearly tight, MOM
+  0.0012–0.0015 measured against 0.0016. <span class="meta"><code>L38.bank_regret</code>,
+  <code>window_regret</code>, <code>butterfly</code> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L38_GrowingBankRegret.lean">L38_GrowingBankRegret.lean</a></span></p>
+</div>
+
+<div class="theorem">
+  <h3>L39 · The merge rule is the address rule <span class="status ok">PROVED</span></h3>
+  <p class="statement">Merging era <code>C</code> with era <code>D</code> fires exactly when
+  <code>C</code> beats a fresh era on <code>D</code>'s tokens in the address step. The two
+  rules cannot disagree, and the Bayes factor is an e-value:
+  <code>P(BF ≥ 1/δ) ≤ δ</code> under separate laws.</p>
+  <p class="proof">Consistency: <code>log BF = −Div + Gain ± K</code>, where the divergence
+  grows linearly with evidence when laws differ and the Occam gain only logarithmically. So
+  different laws are eventually refused and equal laws merged.
+  <span class="meta"><code>L39.merge_iff_address</code>, <code>log_bf_sandwich</code> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L39_MergeRule.lean">L39_MergeRule.lean</a>,
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L39c_MergeConsistency.lean">L39c_MergeConsistency.lean</a></span></p>
+  <p class="proof"><strong>Finding.</strong> The code's threshold <code>BF &gt; 1</code> is
+  <code>δ = 1</code>: no finite-sample guarantee. L39d below gives the threshold that has one.</p>
+</div>
+
+<div class="theorem">
+  <h3>L40 · No forgetting <span class="status ok">PROVED</span></h3>
+  <p class="statement">No operation the bank performs (credit, birth, merge, re-address) ever
+  loses a settled token. An era no operation touches keeps exactly its table, and therefore its
+  predictive, through an excursion of any length.</p>
+  <p class="proof"><strong>The unconditional form is false</strong>, and the counterexample is
+  recorded: a re-address can take an unsettled token out of the era it was credited to. The
+  proved form restricts to settled tokens.
+  <span class="meta"><code>L40.no_forgetting</code>, <code>untouched_era_unchanged</code> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L40_NoForgetting.lean">L40_NoForgetting.lean</a></span></p>
+</div>
+
+<div class="theorem">
+  <h3>L41 · MOM is an HMM forward filter <span class="status ok">PROVED</span></h3>
+  <p class="statement"><code>A = (1−α)I + (α/2)J/n + (α/2)Q̃</code> is row-stochastic and
+  <code>v = wA</code>. So the momentum decider is an exact HMM forward filter, and a switch
+  along the learned kernel costs at most <code>−log((α/2)Q̃(j,i))</code>.</p>
+  <p class="proof">Against BOCPD, MOM pays <code>log 1/(1−α/2)</code> per token, half of SOFT.
+  The bound is pathwise with the kernel in force at each step, so the learned <code>Q̃</code>
+  is covered as it is. <span class="meta"><code>L41.mom_eq_hmm_predict</code>,
+  <code>mom_switch_cost</code> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L41_Momentum.lean">L41_Momentum.lean</a></span></p>
+</div>
+
+<div class="theorem">
+  <h3>L39d · A merge threshold with a guarantee <span class="status ok">PROVED</span></h3>
+  <p class="statement">Merge at the <code>j</code>-th check only when
+  <code>BF_j ≥ (j+1)(j+2)/δ</code>. Then the probability of any false merge, for any pair, at
+  any time, is at most <code>δ</code>. A single fixed threshold cannot give that guarantee; that
+  is proved too.</p>
+  <p class="proof"><span class="meta"><code>L39d.merge_false_alarm</code>,
+  <code>no_uniform_merge_guarantee</code> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L39d_MergeThreshold.lean">L39d_MergeThreshold.lean</a></span></p>
+</div>
+
+<div class="theorem">
+  <h3>L41b · The learned kernel <span class="status ok">PROVED</span></h3>
+  <p class="statement">For any sequence of era switches, the kernel learned from counts is
+  within <code>(k−1) log(n+1)</code> nats of the best fixed kernel chosen in hindsight.</p>
+  <p class="proof">How fast the learned parameters approach the true switch law is cited, not
+  formalised. <span class="meta"><code>L41b.learned_kernel_regret</code> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L41b_LearnedKernel.lean">L41b_LearnedKernel.lean</a></span></p>
+</div>
+
+<div class="theorem">
+  <h3>L42 · The filter as shipped <span class="status ok">PROVED</span></h3>
+  <p class="statement">The log-space filter with a max-shifted log-sum-exp is exactly L38's
+  Bayes step, with nothing overflowing or underflowing. HARD routing, answering with the top era
+  alone at weight <code>≥ θ</code>, costs at most <code>log(θ + (1−θ)/ε)</code> per HARD step,
+  so L38 carries over to it.</p>
+  <p class="proof">The floor <code>ε</code> on expert probabilities is load-bearing: the
+  Dirichlet smoothing provides it. <span class="meta"><code>L42.logBayes_exact</code>,
+  <code>hard_regret</code> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L42_ShippedFilter.lean">L42_ShippedFilter.lean</a></span></p>
+</div>
+
+<p>They rest on an earlier chain, L1–L37, in the same folder: among them non-destructive birth
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L23_NonDestructiveBirth.lean">L23</a>), Ville-bounded birth
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L24s_Ville.lean">L24s</a>), exact online fitting
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L27_PartialFit.lean">L27</a>) and the HMM filter
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/FCPA/L14b_HMMFilter.lean">L14b</a>).</p>
+
+<h2 id="explain">8 · What the theorems explain</h2>
+
+<p>The proofs earn their place by predicting the measurements before anyone tuned to them.</p>
+
+<ul class="plain">
+  <li><strong>Why round 1 broke G2.</strong> L38 bounds the overhead against BOCPD by
+  <code>α/(1−α)</code> per token for SOFT and about <code>α/2</code> for MOM. G2 is therefore
+  guaranteed when <code>α ≤ 0.0039</code> (SOFT) or <code>α ≤ 0.0078</code> (MOM). Round 1
+  picked <code>α = 0.01</code>, outside both, and five of six deciders failed. Round 2's
+  <code>0.003</code> is inside both, and both passed.</li>
+  <li><strong>Why momentum pays more on fast cycles.</strong> L41 prices each switch along a
+  learned cycle at about 1.0–1.4 nats less than SOFT. The saving should scale with the number of
+  switches, and it does:</li>
+</ul>
+
+<div class="scroll">
+<table>
+  <caption>Bound-level saving of MOM over SOFT, against the measured gap (E0e).</caption>
+  <thead>
+    <tr><th>bed</th><th>switches</th><th>predicted, nats/token</th><th>measured</th></tr>
+  </thead>
+  <tbody class="num">
+    <tr><td>CYC-S (segments ≈ 100)</td><td>≈ 199</td><td>0.010–0.014</td><td>0.0077</td></tr>
+    <tr><td>CYC (segments ≈ 350)</td><td>≈ 57</td><td>0.0028–0.0040</td><td>0.0022</td></tr>
+  </tbody>
+</table>
+</div>
+
+<p>Measured is 55–80% of the bound, as a bound should be, and the ratio is exact: switches
+199/57 = 3.5, measured gaps 0.0077/0.0022 = 3.5.</p>
+
+<h2 id="roadmap">9 · Where it stands</h2>
+
+<p>Every architecture that lasted took the same road: an idea that dies cheaply if it is wrong,
+then proofs, then an engine that fits the hardware, then scale. A stage is done only when its
+exit gate closes, on fresh seeds or in Lean
+(<a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/ROADMAP.md">ROADMAP.md</a>).</p>
+
+<pre><code>PHASE 0  research          0 ✓  1 ✓  2 ✓  3 ✓  4 ✓
+PHASE 1  build and prove   5 ◐  6 ○  7 ○                  &lt;- here
+PHASE 2+ compare and scale 8 ○  9 ○  10 ○  11 ○  12 ○  13 ○
+✓ done   ◐ in progress   ○ not started</code></pre>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>stage</th><th class="l">exit gate</th><th class="l">status</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>0 frame</td><td class="l">every claim falsifiable by a named experiment</td><td class="l">✓ PROGRAM.md, claims C1–C6</td></tr>
+    <tr><td>1 theory</td><td class="l">no component without a lemma</td><td class="l">✓ L1–L41</td></tr>
+    <tr><td>2 toy beds</td><td class="l">frozen bars pass on fresh seeds</td><td class="l">✓ E0, E0b, E0c</td></tr>
+    <tr><td>3 tournament</td><td class="l">winner beats incumbent on ≥ 8/10 seeds</td><td class="l">✓ MOM 10/10</td></tr>
+    <tr><td>4 strong controls</td><td class="l">≤ 0.5 × best neural arm on ≥ 8/10 seeds</td><td class="l">✓ E1 10/10</td></tr>
+    <tr><td>5 Lean</td><td class="l">every lemma decided, clean build</td><td class="l">◐ L38–L42 proved, merge threshold and learned kernel included</td></tr>
+    <tr><td>6 engine</td><td class="l">exact parity with the numpy reference; throughput target</td><td class="l">○ torch module, parallel-scan filter</td></tr>
+    <tr><td>7 real text</td><td class="l">reproducible TinyStories run beats our own n-gram</td><td class="l">○ era heads as ridge readouts</td></tr>
+    <tr><td>8–13</td><td class="l">small GPTs at equal compute, scaling, robustness, release</td><td class="l">○ later</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="method">10 · Method</h2>
+
+<ul class="plain">
+  <li><strong>Bars before results.</strong> Every preregistration is frozen by sha256 in
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/e0/FREEZE.txt"><code>FREEZE.txt</code></a> before the run it judges. An
+  amendment is a new frozen file, never an edit.</li>
+  <li><strong>Fresh seeds only.</strong> Tuning seeds and evaluation seeds never overlap. Each
+  round moves to a new block: 0–9, 10–19, 20–29, 30–39, 40–49, 50–59.</li>
+  <li><strong>Owned baselines.</strong> Every competitor was built in this repository and scored on
+  the same streams: global order-1 and order-2 models, EMA, BOCPD, an oracle, online and
+  meta-trained GRUs, a meta-trained transformer.</li>
+  <li><strong>Failures stay on the record.</strong> E0's two failed bars, E0b's over-splitting,
+  round 1's broken gate and L40's false version are all in the repository.</li>
+  <li><strong>Lemma, Lean, build.</strong> The notes put it in four words: “LEMMA and LEAN →
+  BUILD → PROVEN”.</li>
+</ul>
+
+<h2 id="code">11 · Running it</h2>
+
+<p>The era bank and the tournament are numpy only, four CPU cores, about 15 minutes in all.</p>
+
+<pre><code>git clone https://github.com/teerthsharma/Asmodeus
+cd Asmodeus/zero/research/e0
+python -m pytest -q test_e0.py     # sanity tests
+python run.py &amp;&amp; python score.py   # E0
+python run_e0b.py                  # E0b
+python run_e0c.py                  # E0c: the bank of record
+python run_e0d.py                  # tournament, round 1
+python run_e0d.py e0e              # tournament, round 2: MOM wins</code></pre>
+
+<p>E1 needs torch. The transformer's meta-training took 52 minutes on a CPU.</p>
+
+<pre><code>cd Asmodeus/zero/research/e1
+python run_e1.py --smoke           # end-to-end check, numbers mean nothing
+python run_e1.py all               # ERA, GRUs, transformer, then the bars</code></pre>
+
+<p>The proofs build with Lake.</p>
+
+<pre><code>cd Asmodeus/zero/lean
+lake build
+python check_no_sorry.py           # expects 0</code></pre>
+
+<h2 id="sources">12 · Sources</h2>
+
+<p>Every number on this page comes from one of these files. Links are pinned to the commits that
+hold them.</p>
+
+<ul class="plain">
+  <li><a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/PROGRAM.md">PROGRAM.md</a>: hypothesis, claims C1–C6 with kill
+  rules, Addenda 1–4.</li>
+  <li><a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/origin_notes_transcription.md">origin_notes_transcription.md</a>:
+  the handwritten notes, in full.</li>
+  <li><a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/VERDICT_E0.md">VERDICT_E0.md</a> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/e0/RESULTS_E0c.md">RESULTS_E0c.md</a>: the bank.</li>
+  <li><a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/VERDICT_TOURNAMENT.md">VERDICT_TOURNAMENT.md</a> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/e0/RESULTS_E0e.md">RESULTS_E0e.md</a>: the deciders.</li>
+  <li><a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/VERDICT_E1.md">VERDICT_E1.md</a> ·
+  <a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/e1/out/RESULTS_E1.md">RESULTS_E1.md</a>: the neural controls.</li>
+  <li><a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/lean/ERA_LEMMAS.md">ERA_LEMMAS.md</a>: L38–L42, statements, proofs,
+  rejected versions.</li>
+  <li><a href="https://github.com/teerthsharma/Asmodeus/blob/4ff37619681a6928fdeee0060465e80d786dfef3/zero/research/ROADMAP.md">ROADMAP.md</a>: the stages and their gates.</li>
+  <li>Pull requests: <a href="https://github.com/teerthsharma/Asmodeus/pull/23">#23</a>
+  (tournament), <a href="https://github.com/teerthsharma/Asmodeus/pull/24">#24</a> (E1 and
+  roadmap), <a href="https://github.com/teerthsharma/Asmodeus/pull/26">#26</a> and
+  <a href="https://github.com/teerthsharma/Asmodeus/pull/30">#30</a> (Lean).</li>
+</ul>
+
+<h2 id="limits">13 · Limits</h2>
+
+<ul class="plain">
+  <li><strong>Synthetic beds only.</strong> Every win is on order-1 Markov switching streams
+  with sharp rows and four recurring laws, built to favour eras. They are a necessary condition.
+  Language is untested.</li>
+  <li><strong>Count tables do not generalise to text.</strong> For language, era heads must
+  become closed-form ridge readouts on features. That is stage 7, not done.</li>
+  <li><strong>The context control is small.</strong> The best context reader was a 0.86M
+  transformer with a 512-token window. In-context learning grows with scale, and a larger or
+  longer-context model could close the gap. That comparison is phase 2.</li>
+  <li><strong>The filter is sequential.</strong> It runs token by token. The fix, a parallel
+  scan in log space, is stage 6.</li>
+  <li><strong>Regret is against the best path through the pool</strong>, not against the
+  oracle. Closing that gap needs era-equals-regime estimation, which is cited, not
+  formalised.</li>
+  <li><strong>Some constants are tuned, not derived.</strong> <code>δ = 0.05</code>, a
+  32-token window and the 64-transition wait sit at the edges of their frozen grids. The 50/50
+  split between <code>Q̃</code> and uniform in MOM was never tuned.</li>
+  <li><strong>Lean proves the maths, not the Python.</strong> Property tests must pin the code's
+  constants to each lemma's hypotheses, for example <code>α ≤ 0.0078</code> for MOM's G2
+  guarantee.</li>
+  <li><strong>The code still merges at <code>BF &gt; 1</code>.</strong> L39d's guaranteed
+  threshold is proved but not yet in <code>arms.py</code>.</li>
+  <li><strong>The oracle and every count model share the generating prior</strong>
+  (<code>a = 0.2</code>).</li>
+</ul>
+
+<footer>
+  <p><strong>Invented by <a href="https://teerth.dev/">Teerth Sharma</a></strong> ·
+  <a href="https://github.com/teerthsharma/Asmodeus">github.com/teerthsharma/Asmodeus</a> ·
+  teerths57@gmail.com · Attribution License</p>
+  <p>The time traveller holds only results of history. When it needs more, it goes back to the
+  era that knows.</p>
+</footer>
+
+</div>
+</body>
+</html>
