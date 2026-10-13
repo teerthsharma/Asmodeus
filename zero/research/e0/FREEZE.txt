@@ -5,3 +5,5 @@ E0b bars frozen at 2026-10-12T23:37:04Z (pre-result). E0b_PREREG.md sha256 c553d
 E0c bars frozen at 2026-10-12T23:41:41Z (pre-result). E0c_PREREG.md sha256 33b833617497f73852a25873627142e53b12dbdb0a9e537bf68f4aa415d93958
 E0d bars frozen at 2026-10-13T00:04:23Z (pre-result). E0d_PREREG.md sha256 a1cbdd2788166c30465a877b5594fea9b062fdd125d53e5d1b8d9e1eee19e2c3
 E0e bars frozen at 2026-10-13T00:12:34Z (pre-result). E0e_PREREG.md sha256 1951f88828277ae0c23802a4b2a390f4bf4bf6aed82f5bfeb1666fd8f71f6c7b
+E1 bars frozen at 2026-10-13T00:30:31Z (pre-result). E1_PREREG.md sha256 d4a8564671725f768fe8e0038c543790c1ae8a52db5f17e5935d7196fd99c29f
+E1 amendment 1 frozen at 2026-10-13T00:37:34Z (pre-result). E1_AMEND1.md sha256 9d344487600d554fe92246a82dc5fd45a1fbf93facf11777e7ea4a13c962561a

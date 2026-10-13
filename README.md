@@ -1,479 +1,566 @@
-<h1 align="center">Asmodeous ०</h1>
+<h1 align="center">Asmodeus ०</h1>
 
-<p align="center"><b>An atlas of tiny predictive worlds that exist only when an observer looks at them.</b></p>
+<p align="center"><b>A time traveller on a chronal fluid.</b><br/>
+A softmax decider that answers alone, and goes back to an era when it needs that era's knowledge.</p>
+
+<p align="center"><a href="https://teerth.blog/asmodeus"><b>Read the essay at teerth.blog/asmodeus</b></a> &nbsp;·&nbsp; <a href="https://blog.teerth.dev/asmodeus/">project page</a></p>
 
 <p align="center"><i>Asmodeus, king of demons, commands a legion. None of them is anywhere until it is called by name.<br/>
-Called, one appears, does its work in its own small corner of the world, and is gone.</i></p>
+Called, one appears, does its work in its own corner of time, and is gone.</i></p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/phase-1%20%C2%B7%20build%20and%20prove-6E40C9?style=flat-square" alt="phase 1" />
+  <img src="https://img.shields.io/badge/Lean%204-0%20sorry-1F6FEB?style=flat-square" alt="Lean 4, 0 sorry" />
   <img src="https://img.shields.io/badge/python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" alt="python 3.11" />
-  <img src="https://img.shields.io/badge/torch-2.14-EE4C2C?style=flat-square&logo=pytorch&logoColor=white" alt="torch 2.14" />
+  <img src="https://img.shields.io/badge/numpy-reference-013243?style=flat-square&logo=numpy&logoColor=white" alt="numpy reference" />
   <img src="https://img.shields.io/badge/CUDA-RTX%204060-76B900?style=flat-square&logo=nvidia&logoColor=white" alt="CUDA RTX 4060" />
   <img src="https://img.shields.io/badge/license-Attribution-blue?style=flat-square" alt="license: Attribution" />
-  <img src="https://img.shields.io/badge/tests-pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white" alt="tests: pytest" />
 </p>
 
 **Invented by [Teerth Sharma](https://teerthsharma.vercel.app/)** · teerths57@gmail.com
 
 ---
 
-## Abstract
+## Contents
 
-A measurement is the one step of quantum mechanics that is not linear, and it is the step that makes something real. Asmodeous ० takes that sentence as an engineering principle. The model is an **atlas of many tiny predictive charts**, each with its own small coordinate system, laid over a fragmented geometry. A **softmax observer** is the measurement: it decides which charts are read, and only the charts it reads are computed ("observed → exists"). The observer's weights are a partition of unity, so the charts it reads glue into one higher-dimensional space, and the pattern of which charts are read together is a nerve whose homology is the topology the model has learned. The observer is closed into a loop in the manner of a closed timelike curve: it reads the predicted futures of its candidate charts before it commits, and commits to the choice that is consistent with the future it causes. In time, as in space, nothing is computed unless something happens: an event-driven clock fires only on deviation.
+1. [Abstract](#1-abstract)
+2. [Status at a glance](#2-status-at-a-glance)
+3. [The idea, in the inventor's words](#3-the-idea-in-the-inventors-words)
+4. [Definitions](#4-definitions)
+5. [The architecture, one token at a time](#5-the-architecture-one-token-at-a-time)
+6. [What has been measured](#6-what-has-been-measured)
+7. [What has been proved](#7-what-has-been-proved)
+8. [FCPA: the fluid-dynamics line](#8-fcpa-the-fluid-dynamics-line)
+9. [Roadmap: 14 stages, and where we are](#9-roadmap-14-stages-and-where-we-are)
+10. [How the research is run](#10-how-the-research-is-run)
+11. [What we got wrong, and what it taught](#11-what-we-got-wrong-and-what-it-taught)
+12. [Honest limits](#12-honest-limits)
+13. [Reproduce](#13-reproduce)
+14. [Repository layout](#14-repository-layout)
+15. [Glossary](#15-glossary)
+16. [License](#16-license)
 
-The mathematics is quantum (linear superposition, then a measurement that breaks linearity). The machine is a classical consumer GPU. The idea is built as one architecture, **ASMODEOUS**, assembled slot by slot from the best part available for each slot. Its state is a point of complex projective space that carries its own phase. Its observer is a Parseval-frame POVM whose probabilities sum to one exactly, with an outcome for observing nothing. Its charts are gauge-fixed and exist only when read. Its gluing maps are learned unitary gauge links, its dynamics are unitary, and its loop is a damped fixed point that is guaranteed to converge. Its two parents, **OBSERVER-ATLAS** (real charts under a softmax observer) and **PHASE-SPHERE** (amplitudes on a sphere of phases under a Born decider), run beside it as first-class candidates. Every slot has a preregistered ablation, and measurements against owned baselines at equal active FLOPs and equal parameters decide which part earns each claim.
-
-**Keywords:** observer, atlas of charts, partition of unity, lazy computation, Born rule, POVM, Chern number, holonomy, closed timelike curve, event-driven computation, JEPA.
+Every claim below links to the file, verdict or pull request that backs it. A number with no link is a bug in this README.
 
 ---
 
-## ASMODEOUS: one architecture, the best part in every slot
+## 1. Abstract
 
-<p align="center"><img src="zero/docs/fig/asmodeous.svg" width="96%" alt="ASMODEOUS: one step, slot by slot"/></p>
+Data is not one distribution. It is a **chronal fluid**: a stream whose governing law changes from one stretch of time to the next and, often, comes back. Asmodeus ० cuts the stream into **eras**. An era is a small statistical model that holds the knowledge of one law. A softmax decider, the **time traveller (TT)**, keeps a weight $w_t$ over the eras. That weight is the **chronal fluid data density**: where the TT stands in the liquid of eras at time $t$. Each token moves it by one rule, *multiply by the likelihood, then normalise*, and it carries **momentum**: the weight flows along a learned era-to-era kernel, so where the TT came from predicts where it goes next.
 
-ASMODEOUS is not a committee of models. Each slot of the architecture was filled by asking which candidate part does that one job best, and the winner was taken whichever parent it came from. PHASE-SPHERE gives the state, the charts and the topological readouts. OBSERVER-ATLAS gives laziness and gluing. Seal's A.E.T.H.E.R. paper gives the adaptive measurement and the event clock. The CTC loop of the origin notes gives the observer its time-traveller. The full design, with the reason for every choice and the ablation that removes it, is in [`ASMODEOUS.md`](zero/ASMODEOUS.md).
+New eras are born online under an anytime-valid change detector whose false-alarm rate is bounded by Ville's inequality. Two eras that turn out to hold the same law are merged by a Bayes factor that is provably the same rule as the address step. Old eras are never overwritten, so nothing settled is forgotten.
 
-| Slot | Part chosen | From |
+On switching-law streams with recurring regimes, the era bank with the momentum decider (**MOM**) has **11× lower regret** than the best owned online learner ([`VERDICT_E0.md`](zero/research/VERDICT_E0.md)), beats uniform fixed share on **10 of 10** fresh seeds ([`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md)), and has **15× lower regret** than a 0.86M-parameter meta-trained transformer that reads the regime from its context ([`VERDICT_E1.md`](zero/research/VERDICT_E1.md)). The regret bound, the merge rule, no forgetting and the momentum filter are **proved in Lean 4** with no `sorry` ([`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md), [PR #26](https://github.com/teerthsharma/Asmodeus/pull/26), [PR #30](https://github.com/teerthsharma/Asmodeus/pull/30)), together with a finite-sample merge threshold and the learned kernel's regret.
+
+Phase 0 (research) is closed. Phase 1 (Lean, a GPU engine, a real-text pilot) is in progress ([`ROADMAP.md`](zero/research/ROADMAP.md)).
+
+---
+
+## 2. Status at a glance
+
+| | State | Evidence |
 |---|---|---|
-| state | $\psi=\mathrm{normalise}(E(o))\in\mathbb{CP}^{N-1}$: the phase is part of the state | PHASE-SPHERE |
-| observer | Parseval-frame POVM: the rows $v_k$ of an isometry $V\in\mathbb{C}^{(K+1)\times N}$, $V^\dagger V=I$, plus one "observe nothing" row | A.E.T.H.E.R., Born, Naimark |
-| charts | $z_k=V_k^\dagger\psi\,e^{-i\arg\alpha_k}$, gauge-fixed, computed only when read | PHASE-SPHERE |
-| laziness in $K$ | score $K{+}1$ effects, run only the top $m$ charts; their weights are exact with no sum over $K$ | OBSERVER-ATLAS |
-| laziness in time | event trigger, adiabatic re-route between events, per-chart send-on-delta | A.E.T.H.E.R. |
-| gluing | learned gauge links $G_{jk}\in U(d_c)$ with a cocycle loss: a learned Čech cocycle | origin notes, PHASE-SPHERE |
-| dynamics | $\hat z_k=\mathrm{Cayley}(X_k(a))\,z_k$, unitary | PHASE-SPHERE |
-| observer loop | damped fixed point, a contraction; an amortised head answers before the loop runs | origin CTC, time-traveller |
-| readouts | nerve Betti over $\mathbb{Z}_2$, Chern $c_1$ from $\psi$, holonomy $\det\prod G$ | both parents |
-| training | fidelity $1-\lvert\langle\hat\psi_{t+1},\psi^{\mathrm{tgt}}_{t+1}\rangle\rvert^2$ on $\mathbb{CP}^{N-1}$, Haar test against collapse | origin, LeJEPA |
+| **Architecture of record** | E0c era bank + **MOM** decider, α = 0.003 | [`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md), [PR #23](https://github.com/teerthsharma/Asmodeus/pull/23) |
+| **Phase 0 (stages 0–4)** | ✓ done | [`ROADMAP.md`](zero/research/ROADMAP.md) |
+| **Stage 5, Lean** | ◐ L38–L42 proved, incl. merge threshold and learned kernel | [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md), [PR #26](https://github.com/teerthsharma/Asmodeus/pull/26), [PR #30](https://github.com/teerthsharma/Asmodeus/pull/30) |
+| **Stage 6, GPU engine** | ○ in build; interface frozen | [`phase2/INTERFACE.md`](zero/research/phase2/INTERFACE.md) |
+| **Stage 7, TinyStories pilot** | ○ next | [`ROADMAP.md`](zero/research/ROADMAP.md) §Stage 7 |
+| **Regret vs best owned learner** | 0.028 vs 0.305 nats/token (11×) | [`VERDICT_E0.md`](zero/research/VERDICT_E0.md) |
+| **MOM vs SOFT** | 10/10 paired fresh seeds, −5.6% | [`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md) |
+| **ERA vs context readers** | 0.027 vs 0.463 (15×), 10/10 seeds | [`VERDICT_E1.md`](zero/research/VERDICT_E1.md) |
+| **Lean** | 43 files, 0 `sorry` | [`zero/lean/FCPA/`](zero/lean/FCPA/), [`check_no_sorry.py`](zero/lean/check_no_sorry.py) |
+| **FCPA estimator** | launch unblocked; Amendment 11c frozen; L37 era model next | [`FREEZE4.md`](zero/docs/specs/FREEZE4.md), [PR #25](https://github.com/teerthsharma/Asmodeus/pull/25) |
 
-The observer is the heart of it. A $K\times N$ isometry with $K>N$ is a tight frame, so its rows already form a POVM with more outcomes than dimensions, and every probability is exact:
-
-$$p_k=\big|\langle v_k,\psi\rangle\big|^2,\qquad \sum_{k=0}^{K}p_k=\psi^\dagger V^\dagger V\psi=1,\qquad \gamma=1-p_\varnothing$$
-
-where $v_k$ is row $k$ of $V$, $p_\varnothing$ is the probability of the "observe nothing" row, and $\gamma$ is the gate. Because the probabilities need no partition function, the lazy top-$m$ weights are the same numbers the dense model would compute: laziness costs no approximation at all. The time-traveller is made a contraction by damping:
-
-$$w\;\leftarrow\;(1-\varepsilon)\,D\big(P_h(z,w)\big)+\tfrac{\varepsilon}{M}\mathbf{1},\qquad \varepsilon>0$$
-
-so the fixed point $w^\star$ exists, is unique, and is reached geometrically from any start. The loop no longer only promises an answer; it guarantees one.
-
-The primitives these equations rest on are already test-bound (`tests/test_asmodeous_ops.py`, 16/16):
-
-- the Stiefel retraction gives $V^\dagger V=I$ to $10^{-10}$ at $K\in\{16,65,257\}$;
-- tight-frame probabilities are $\ge 0$ and sum to 1 to $10^{-10}$ with $K>N$;
-- the damped loop converges to residual $<10^{-8}$ from 10 starts to one fixed point, while the undamped loop on a cycle does not;
-- gauge links are unitary to $10^{-10}$ and satisfy the exact cocycle;
-- fidelity is phase-invariant to $10^{-12}$;
-- the Haar statistic separates Haar-random states from collapsed ones.
-
-The `Asmodeous` class is being built test-first against its contract (`tests/test_asmodeous.py`), with a preregistered Hopf single-chart control that is allowed to take the chart slot on $S^2$ if it wins.
+```
+PHASE 0  research          0 ✓  1 ✓  2 ✓  3 ✓  4 ✓
+PHASE 1  build and prove   5 ◐  6 ○  7 ○                  <- we are here
+PHASE 2+ compare and scale 8 ○  9 ○  10 ○  11 ○  12 ○  13 ○   (Seal, later)
+✓ done   ◐ in progress   ○ not started
+```
 
 ---
 
-## FCPA: the Fluid Chrononal Predictive Architecture, and the road ahead
+## 3. The idea, in the inventor's words
 
-The next shape of Asmodeous ० is a **time traveller moving through a fluid of worlds**. Data is not one distribution. It is a *multiversal data fluid*: an ensemble of trajectories whose governing law changes from one stretch of time to the next. FCPA cuts that fluid into **eras**. An era is a time slice bounded on both sides by a **Markov bound** (the transition law changes) and a **Navier–Stokes bound** (the flow law, viscosity and forcing, changes), and each era holds its own small world model. A softmax **time traveller** answers alone when it can. When it cannot, it jumps into the era it needs. To cross from one era to the next it must compute the **differentiator** $\Delta E$, the change of the equations, and that change is also the **address** of where the data lives. The traveller closes the loop the way a closed timelike curve does: it reads the futures its own choice would cause, and commits only to a self-consistent one. New eras are born while the system runs, like hot reload in a game engine, so the model teaches itself: **recursive self-learning (RSL)**.
+The design comes from two handwritten notes, "AT I ०" and "That if we combine", transcribed in full in [`origin_notes_transcription.md`](zero/research/origin_notes_transcription.md). The originals are in [`zero/ref/origin/`](zero/ref/origin/).
+
+> our softmax is a TT (Time Traveller),
+> is smart alone, but when he needs knowledge
+> of a particular era he goes back in time;
+> his TT contains only results
+> of history; the era contains
+> knowledge, like a JEPA.
+
+> what I mean is we will provide the time travel a dimensional phase;
+> when this momentum will be like in a dimension of "liquid" …
+> so we will get liquid of JEPA.
+
+> **fluid chrononal predictive architecture**
+> (after multiplication and normalisation)
+
+> That's what the aim of this research is → LEMMA and LEAN → BUILD → PROVEN ✓
+
+The constraints, from "AT I ०":
+
+- **New design: not JEPA, nor self attention.** Eras may be any predictor; the decider is a softmax.
+- **"The internal design of this should also be butterfly effect bonded via topology."** One token's influence on the decider is bounded (L38 `butterfly`, §7).
+- **Method: research → lemma and Lean → build → proven.** A measured result is *measured*, not *proven*, until its lemma compiles in Lean.
+
+Every term below is read from these notes. Where a formal definition goes beyond the notes, [`PROGRAM.md`](zero/research/PROGRAM.md) Addendum 2 records the choice.
+
+---
+
+## 4. Definitions
+
+### Time traveller (TT)
+
+The softmax decider. It holds a weight vector $w_t$ over a pool of experts and answers with their blend. It "is smart alone": when one expert carries almost all the weight, it answers with that expert and spends no compute on the rest. When it "needs knowledge of a particular era", the weight moves there. It "contains only results of history": the TT keeps no raw past, only $w_t$ and the eras' sufficient statistics.
+
+Source: notes p3; FCPA design D7 ([`2026-10-11-fcpa-design.md`](zero/docs/specs/2026-10-11-fcpa-design.md)); [`PROGRAM.md`](zero/research/PROGRAM.md) §0 and Addendum 2.
+
+### Era
+
+A maximal stretch of time with one constant law, and the small model that holds that law's knowledge. In the reference code an era is an order-1 count table $C_k \in \mathbb{N}^{V\times V}$ with a Dirichlet prior:
+
+$$p_k(x \mid x') = \frac{C_k[x',x] + a}{\sum_y C_k[x',y] + aV}, \qquad a = 0.2.$$
+
+Counts are additive sufficient statistics, so an era updated online equals the era fitted in batch (L27, `partial_fit = fit`). Source: [`PROGRAM.md`](zero/research/PROGRAM.md) §3; [`e0/arms.py`](zero/research/e0/arms.py).
+
+### The pool
+
+The TT weighs the bank of eras plus two tail experts:
+
+- a **window** model on the last $w$ tokens (fast, local);
+- a **BOCPD** expert (run-length posterior, Adams–MacKay 2007), the novelty expert that covers a law no era has seen.
+
+Source: [`e0/deciders.py`](zero/research/e0/deciders.py) docstring; [`VERDICT_E0.md`](zero/research/VERDICT_E0.md).
+
+### Chronal fluid data density, $w_t$
+
+The TT's softmax weight over the pool at time $t$: where the TT stands in the "liquid of eras". Its path through time is the "path of softmax" of the notes. Births add eras to the liquid; merges fuse two of them.
+
+Source: [`PROGRAM.md`](zero/research/PROGRAM.md) Addendum 2, which replaces the earlier reading (the data's own law density, Addendum 1, withdrawn).
+
+### "After multiplication and normalisation"
+
+The Bayes step of a forward filter:
+
+$$u_t(i) \;=\; \frac{v_t(i)\,P_t(i)(x_t)}{\sum_j v_t(j)\,P_t(j)(x_t)},$$
+
+where $v_t$ is the weight after the move (below) and $P_t(i)(x_t)$ is expert $i$'s probability of the token that arrived. Source: [`PROGRAM.md`](zero/research/PROGRAM.md) Addendum 2; `Soft.step` in [`e0/deciders.py`](zero/research/e0/deciders.py).
+
+### Momentum (MOM)
+
+"Its momentum will be like in a dimension of liquid." Before each token, a share $\alpha$ of the weight moves. Half of it spreads uniformly. The other half of each era's share travels along a learned era-to-era kernel $\tilde Q$:
+
+$$v_t \;=\; (1-\alpha)\,w_t \;+\; \frac{\alpha/2}{|s_t|}\,\mathbf{1} \;+\; \frac{\alpha}{2}\,w_t^{\text{eras}}\,\tilde Q,$$
+
+with $\tilde Q$ the row-normalised, Dirichlet(1)-smoothed counts of the era switches seen so far (diagonal zero). The incumbent it replaced, **SOFT** (fixed share, Herbster–Warmuth 1998), is the same move with $\tilde Q$ replaced by uniform spreading. Source: `Momentum.share` in [`e0/deciders.py`](zero/research/e0/deciders.py); L41 in [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md).
+
+### Birth
+
+A mixture e-detector (Shin–Ramdas–Rinaldo) watches the active era $A$ with e-values $e_t = F_t(x_t)/A_t(x_t)$, $F_t = \lambda A_t + (1-\lambda)W_t$. Since $\mathbb{E}[e_t \mid \text{past}] = 1$ when $x_t \sim A_t$,
+
+$$S_t = \Big(S_{t-1} + \tfrac{1}{t(t+1)}\Big)\,e_t, \qquad M_t = S_t + \tfrac{1}{t+1}$$
+
+is a test martingale, and by Ville's inequality $\Pr(\exists t: M_t \ge 1/\delta) \le \delta$. On an alarm the window is **addressed**: its prequential likelihood under each bank era is compared with a fresh era's marginal likelihood. The best bank era wins → **jump**; the fresh era wins → **birth**. A birth leaves every old era's table unchanged (L23). Source: [`PROGRAM.md`](zero/research/PROGRAM.md) §3; `_Detector` and `fcpa` in [`e0/arms.py`](zero/research/e0/arms.py).
+
+### Merge
+
+Two eras $C$, $D$ fuse when the Dirichlet–multinomial Bayes factor favours one law:
+
+$$\log \mathrm{BF} \;=\; \log \mathrm{ML}(C+D) - \log \mathrm{ML}(C) - \log \mathrm{ML}(D) \;>\; 0,$$
+
+checked globally over all pairs, and only after an era holds $n_{\min} = 64$ transitions of evidence. L39 proves this is the address rule applied to a whole era. Source: [`E0c_PREREG.md`](zero/research/E0c_PREREG.md); L39 in [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md).
+
+---
+
+## 5. The architecture, one token at a time
 
 ```mermaid
 flowchart LR
-    X["x_t, x_t-1<br/>lag-stacked state"] --> TT["Time traveller<br/>softmax TT"]
-    TT -- "alone" --> Y["prediction"]
-    TT -- "asks for an era" --> R["Router<br/>conformal set + law fingerprint"]
-    R --> E1["Era 1<br/>law (ν₁, f₁)"]
-    R --> E2["Era 2<br/>law (ν₂, f₂)"]
-    R --> E3["Era k<br/>born online (RSL)"]
-    E1 -- "ΔE₁₂ crossing" --> E2
-    E1 & E2 & E3 --> CTC["CTC fixed-point loop<br/>T > κ_H ⇒ unique w*"]
-    CTC --> Y
+    X["token x_t"] --> D["e-detector<br/>(Ville-bounded)"]
+    subgraph POOL["pool s_t"]
+        E1["era 1<br/>counts C₁"]
+        E2["era 2<br/>counts C₂"]
+        Ek["era k<br/>born online"]
+        W["window<br/>expert"]
+        B["BOCPD<br/>novelty expert"]
+    end
+    WT["w_t<br/>chronal fluid density"] --> MV["move<br/>(1-α)w + α/2·uniform + α/2·w·Q̃"]
+    MV --> ANS["answer<br/>p_t = Σ v_t(i) P_t(i)"]
+    POOL --> ANS
+    ANS --> BAYES["multiply by likelihood,<br/>then normalise"]
+    BAYES --> WT
+    D -- "alarm" --> ADDR["address:<br/>jump or birth"]
+    ADDR --> POOL
+    POOL -- "log BF > 0" --> MERGE["merge (fold)"]
+    MERGE --> POOL
+    BAYES -. "switch counts" .-> Q["kernel Q̃<br/>(momentum)"]
+    Q --> MV
 ```
 
-The whole architecture is written as lemmas first, proved in Lean 4, and implemented as one scikit-learn estimator (`FCPARegressor`, which passes `check_estimator`) whose `partial_fit` equals `fit` exactly, because every era keeps only additive sufficient statistics. The equations that carry it:
+Per token, exactly as the reference code runs it ([`e0/deciders.py`](zero/research/e0/deciders.py), [`e0/arms.py`](zero/research/e0/arms.py)):
+
+```text
+for each token x_t:
+    v   = move(w)                       # MOM: (1-α)w + (α/2)/|s| + (α/2)·w_eras·Q̃
+    p_t = Σ_i v(i) · P_i(x_t | x_{t-1})  # the TT's answer (HARD: top expert alone if v_max ≥ θ)
+    w   = normalise(v ⊙ P(x_t))         # "after multiplication and normalisation"
+    credit x_t to the active era's counts
+    if detector alarms:                 # M_t ≥ 1/δ
+        address the window → jump to a bank era, or birth a fresh era
+        if jump a→b: Q̃ counts[a,b] += 1
+        birth: w ← (1-α)w ⊕ [α]        # old tables untouched (L23)
+    every era with ≥ n_min evidence: merge pairs with log BF > 0, w(i) += w(j)
+```
+
+What each piece buys:
+
+| Piece | Job | Without it | Evidence |
+|---|---|---|---|
+| Era bank | remembers every law for the whole stream | re-learns a law on every return | E0: re-entry excess 0.084 vs 0.70 for BOCPD |
+| Forward filter (Bayes step) | sharp routing from the likelihood product | the active era alone: 0.125 vs 0.034 | [`VERDICT_E0.md`](zero/research/VERDICT_E0.md) diagnosis |
+| BOCPD novelty expert | covers laws no era has seen | 3.71× BOCPD's regret on NOREC | E0 B2 FAIL → E0b B2 PASS |
+| Global merge + $n_{\min}$ | one era per law | 4–8 eras for 4 laws | E0b B3 FAIL → E0c PASS |
+| MOM kernel | uses the order in which laws recur | −5.6% regret lost | [`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md) |
+| HARD threshold | one era answers alone | no compute saving | alone on 45.8% of steps at no loss |
+
+---
+
+## 6. What has been measured
+
+All numbers are regret against an **oracle** that knows the true regime, in nats per token, averaged over **fresh evaluation seeds** never used for tuning. Every bar was frozen by sha256 before its result existed ([`e0/FREEZE.txt`](zero/research/e0/FREEZE.txt)).
+
+### The beds
+
+Generator [`e0/bed.py`](zero/research/e0/bed.py). V = 16 symbols, order-1 laws with rows ~ Dirichlet(0.2·1), T = 20,000 tokens ([`PROGRAM.md`](zero/research/PROGRAM.md) §6, [`E0d_PREREG.md`](zero/research/E0d_PREREG.md)).
+
+| Bed | What it is | What it tests |
+|---|---|---|
+| REC | 4 laws that recur; segments 50 + Geometric(350) | memory of returning regimes |
+| NOREC | every segment a fresh law | the cost of memory when nothing returns |
+| NULL | one law, no switches | false births |
+| CYC | 4 laws; the next is the cyclic successor with p = 0.9 | whether the order of eras can be learned |
+| CYC-S | CYC with short segments, 20 + Geometric(100) | fast switching |
+
+### E0, E0b, E0c: does the era mechanism pay? (stage 2)
+
+Source: [`VERDICT_E0.md`](zero/research/VERDICT_E0.md), [`e0/RESULTS.md`](zero/research/e0/RESULTS.md), [`RESULTS_E0b.md`](zero/research/e0/RESULTS_E0b.md), [`RESULTS_E0c.md`](zero/research/e0/RESULTS_E0c.md).
+
+| Bar | E0 (seeds 0–9) | E0b (seeds 10–19) | **E0c (seeds 20–29)** |
+|---|---|---|---|
+| B1: REC regret ≤ 0.5 × best owned | PASS 10/10 (0.11×) | PASS 10/10 (0.09×) | **PASS 10/10** (0.0277 vs 0.3056) |
+| B2: no cost without recurrence | FAIL (3.71× BOCPD) | PASS (1.17×) | **PASS (1.18×)** |
+| B3: birth control | FAIL (7–11 eras) | FAIL (4–8 eras) | **PASS** (exactly 4 on 8/10, 0 null births) |
+| B4: no forgetting | PASS (0.086) | PASS (0.084) | **PASS** (0.084 vs 0.347 allowed) |
+
+- **11× lower regret** than BOCPD, the best owned learner (0.028 vs 0.305).
+- **No forgetting:** re-entering a seen regime costs 0.084 nats over the oracle, against 0.70 for BOCPD and 0.86 for EMA.
+- **No false eras:** 0 spurious births over 20 null seeds.
+- **Parameter count does not explain it:** GLOBAL-o2 holds 4,352 counts and loses (regret 0.42).
+
+### E0d, E0e: the decider tournament (stage 3)
+
+Six ways for the TT to move $w_t$, each resting on a lemma already in the record, on the same era bank. Source: [`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md), [`E0d_PREREG.md`](zero/research/E0d_PREREG.md), [`E0e_PREREG.md`](zero/research/E0e_PREREG.md).
+
+| Decider (lemma) | Round 2, seeds 40–49 | Verdict |
+|---|---|---|
+| SOFT (L14′ fixed share) | 0.0515, all gates | incumbent |
+| **MOM (D3 Markov law over eras)** | **0.0486, all gates, 10/10 vs SOFT** | **winner** |
+| MOM+GB | 0.0489, all gates | ties MOM; the extra knob buys nothing |
+| GBAYES (tempered likelihood) | 0.0523 | no gain |
+| TEMP (L4 temperature) | 0.0516, fails G2 | no gain |
+| CTC (L32 Hilbert fixed point) | 0.0520, fails G2 | adds nothing; L32 predicted it |
+| HARD (L5 top expert) | 0.0516 ≈ SOFT | **alone on 45.8% of steps**: a compute result |
+
+- MOM's gain is largest where eras follow a path: CYC −7%, CYC-S −6%, NOREC −8%, REC −2%.
+- **Round 2 is disclosed:** round 1's tuning objective left out NOREC and pushed every decider to α = 0.01, which broke gate G2. Round 2 changed only the objective, was preregistered, and ran on fresh seeds. L38 later explained the failure exactly (§7).
+
+### E1: era bank vs models that read the regime from context (stage 4)
+
+The real competitor is in-context inference. Source: [`VERDICT_E1.md`](zero/research/VERDICT_E1.md), [`e1/out/RESULTS_E1.md`](zero/research/e1/out/RESULTS_E1.md), [`E1_PREREG.md`](zero/research/E1_PREREG.md), [`E1_AMEND1.md`](zero/research/E1_AMEND1.md). Fresh seeds 50–59.
+
+| Arm | Params | REC | CYC-S | NOREC |
+|---|---|---|---|---|
+| **ERA** (E0c bank + MOM) | counts | **0.027** | **0.148** | **0.019** |
+| TF-META (meta-trained transformer, 50M tokens) | 0.86M | 0.463 | 0.705 | 0.182 |
+| GRU-ONLINE-L | 17k | 0.688 | 0.660 | 0.750 |
+| GRU-ONLINE-S | 1.9k | 0.740 | 0.717 | 0.776 |
+| GRU-META | 0.21M | 1.023 | 1.048 | 0.714 |
+
+- **C5 holds:** bars E1-B1 (REC) and E1-B2 (CYC-S) pass on 10 of 10 seeds.
+- **Why:** each regime is a fresh 16 × 16 table. TF-META sees 512 tokens, about 5 short segments on CYC-S, too few to estimate a table. ERA keeps every regime's counts for the whole stream and returns to them. The two differ in what they can remember, not in tuning.
+- **Limit:** GRU-META never learned in context under the frozen recipe. The bars did not depend on it.
+
+---
+
+## 7. What has been proved
+
+"Proven" here means a lemma that compiles in Lean 4 with no `sorry`, `axiom`, `admit` or `native_decide` ([`lean/CHANGES.md`](zero/lean/CHANGES.md)). Toolchain `leanprover/lean4:v4.7.0` with a pinned Mathlib ([`lean-toolchain`](zero/lean/lean-toolchain), [`lakefile.lean`](zero/lean/lakefile.lean)).
+
+### The era lemmas, L38–L42 ([PR #26](https://github.com/teerthsharma/Asmodeus/pull/26), [PR #30](https://github.com/teerthsharma/Asmodeus/pull/30))
+
+Full statements and proofs: [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md). The objects are the code in [`zero/research/e0/`](zero/research/e0/), not an idealisation of it.
+
+| Lemma | Claim | Status | Lean |
+|---|---|---|---|
+| **L38** | Regret of the TT filter over a bank that grows by births and shrinks by merges, for any linear decider (SOFT, MOM) | **PROVED**, pathwise | [`L38_GrowingBankRegret.lean`](zero/lean/FCPA/L38_GrowingBankRegret.lean) |
+| **L39** | Merge rule = address rule on a whole era; both directions agree; BF is an e-value | **PROVED** | [`L39_MergeRule.lean`](zero/lean/FCPA/L39_MergeRule.lean) |
+| **L39c** | $\log \mathrm{BF} = -\mathrm{Div} + \mathrm{Gain} \pm K$: divergence linear in evidence, Occam gain logarithmic | **PROVED** (deterministic); sampling bridge cited | [`L39c_MergeConsistency.lean`](zero/lean/FCPA/L39c_MergeConsistency.lean) |
+| **L40** | No forgetting for count eras | **PROVED** for settled tokens; unconditional form FALSE | [`L40_NoForgetting.lean`](zero/lean/FCPA/L40_NoForgetting.lean) |
+| **L41** | MOM is an HMM forward filter; switch cost $-\log((\alpha/2)\tilde Q(j,i))$, learned $\tilde Q$ included | **PROVED** | [`L41_Momentum.lean`](zero/lean/FCPA/L41_Momentum.lean) |
+| **L39d** | Merge iff $\mathrm{BF}_j \ge (j+1)(j+2)/\delta$: P(any false merge, any pair, any time) ≤ δ; no uniform guarantee exists for a fixed threshold | **PROVED** | [`L39d_MergeThreshold.lean`](zero/lean/FCPA/L39d_MergeThreshold.lean) |
+| **L41b** | Learned $\tilde Q$ is within $(k-1)\log(n+1)$ of the best fixed kernel, on any switch sequence | **PROVED**; parameter rate cited | [`L41b_LearnedKernel.lean`](zero/lean/FCPA/L41b_LearnedKernel.lean) |
+| **L42** | The shipped filter: log-space Bayes is exact; HARD routing costs ≤ $\log(\theta + (1-\theta)/\varepsilon)$ per HARD step | **PROVED** | [`L42_ShippedFilter.lean`](zero/lean/FCPA/L42_ShippedFilter.lean) |
+
+**L38, the bound.** For every token sequence, every expert prediction sequence, every birth/merge schedule and every comparator path $c_t \in s_t$:
+
+$$\sum_{t\le T} -\log p_t \;\le\; \sum_{t\le T} -\log P_t(c_t) \;+\; \log\frac{|s_0|}{1-\alpha+\rho} \;+\; \sum_{t<T}\mathrm{cost}_t,$$
+
+with a switch $j \to i$ costing at most $-\log\max\!\big(\rho/N,\ K(j,i)(1-\alpha)^{b_t}\big) \le \log(N/\rho)$. SOFT is $\rho = \alpha, K = 0$; MOM is $\rho = \alpha/2,\ K = (\alpha/2)\tilde Q$.
+
+**What the theorems change in the design:**
+
+- **The "free when nothing recurs" gate is now a theorem.** Overhead vs BOCPD is at most $\alpha/(1-\alpha)$ per token for SOFT and about $\alpha/2$ for MOM. Gate G2 is guaranteed for **α ≤ 0.0039 (SOFT) or α ≤ 0.0078 (MOM)**. Round 1 picked α = 0.01, outside the range, and five of six deciders failed G2; round 2's α = 0.003 is inside, and both passed. On NOREC the bound is nearly tight (MOM measured 0.0012–0.0015 per token, bound 0.0016).
+- **The butterfly is bounded.** One token moves $\log w(i)$ by at most $\log(\max P/\min P)$ (L38 `butterfly`). This is the notes' "butterfly effect bonded via topology", made a number.
+- **The merge threshold now has a finite-sample guarantee.** The coded BF > 1 means δ = 1 (`threshold_one_vacuous`). L39d proves that merging only when $\mathrm{BF}_j \ge (j+1)(j+2)/\delta$ bounds the chance of any false merge, over any pair and any time, by δ. $n_{\min} = 64$ is still tuned, not derived.
+- **No forgetting holds for settled tokens only.** A re-address can move a recent token out of an era. The unconditional statement is false, with a counterexample in [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md).
+- **MOM is exactly an HMM forward filter**, so a batched log-space forward pass, or a parallel scan, computes it with no approximation. This is what the stage 6 engine relies on.
+
+**Still cited, not formalised:** how fast the learned $\tilde Q$ approaches the true switch law (needs Hoeffding for chains), and L39c's sampling bridge ([`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md)).
+
+### The FCPA lemma chain, L1–L37
+
+The TT and the era bank grew out of FCPA, whose lemmas are proved in the same Lean project ([`lean/CHANGES.md`](zero/lean/CHANGES.md)). The ones the chronal-fluid line stands on:
+
+| Lemma | What it gives the TT | Lean |
+|---|---|---|
+| L1 | Born probabilities need no partition function, so lazy top-m routing is exact | [`L01_BornExactness`](zero/lean/FCPA/L01_BornExactness.lean) |
+| L5 | certified top-m: when one expert can answer alone | [`L05_CertifiedTopM`](zero/lean/FCPA/L05_CertifiedTopM.lean) |
+| L6, L7 | split-conformal and adaptive conformal coverage | [`L06_SplitConformal`](zero/lean/FCPA/L06_SplitConformal.lean), [`L07_ACICoverage`](zero/lean/FCPA/L07_ACICoverage.lean) |
+| L14, L14b | the address step; the HMM forward filter | [`L14_Address`](zero/lean/FCPA/L14_Address.lean), [`L14b_HMMFilter`](zero/lean/FCPA/L14b_HMMFilter.lean) |
+| L22, L22H | the CTC return trip: damped and Hilbert fixed points | [`L22_DampedLoop`](zero/lean/FCPA/L22_DampedLoop.lean), [`L22H2_HilbertFixedPoint`](zero/lean/FCPA/L22H2_HilbertFixedPoint.lean) |
+| L23 | non-destructive birth: old eras are unchanged when a new one is born | [`L23_NonDestructiveBirth`](zero/lean/FCPA/L23_NonDestructiveBirth.lean) |
+| L24 | Ville bound on false births; birth e-process | [`L24s_Ville`](zero/lean/FCPA/L24s_Ville.lean), [`L24b_BirthEProcess`](zero/lean/FCPA/L24b_BirthEProcess.lean) |
+| L27 | exact `partial_fit` = `fit` from additive statistics | [`L27_PartialFit`](zero/lean/FCPA/L27_PartialFit.lean) |
+
+L32 (a contracting CTC loop has tilt cap $w^\star_{\max}/w^\star_{\min} \le e^{2q}$, so it cannot be a sharp decider) **predicted** that CTC would add nothing as the TT's answer. The tournament confirmed it. The CTC loop keeps its role as the TT's provable return trip, not its decider ([`PROGRAM.md`](zero/research/PROGRAM.md) §1, Addendum 1).
+
+---
+
+## 8. FCPA: the fluid-dynamics line
+
+**FCPA, the Fluid Chrononal Predictive Architecture**, is the name in the notes. It applies the same idea to continuous fields: a stream of 2-D Navier–Stokes trajectories whose viscosity and forcing change between eras. It is implemented as one scikit-learn estimator, `FCPARegressor`, that passes `check_estimator` and whose `partial_fit` equals `fit` exactly ([`fcpa/API.md`](zero/fcpa/API.md), [`fcpa/estimator.py`](zero/fcpa/estimator.py)).
 
 $$\text{era law:}\quad \partial_t\omega + u\cdot\nabla\omega = \nu_k\,\Delta\omega + f_k,\qquad \hat\nu_k = \frac{S_{RL}}{S_{LL}}\ \ \text{(exact projection, L8)}$$
 
-$$\text{crossing and address:}\quad \Delta E_{jk} = (\nu_k-\nu_j,\ f_k-f_j,\ P_k-P_j),\qquad S_{jk} = \exp\!\Big(\textstyle\sum_a \Delta E_{jk}^{a}\,G_a\Big)\ \text{unitary (L13, L15)}$$
+$$\text{address:}\quad \Delta E_{jk} = (\nu_k-\nu_j,\ f_k-f_j,\ P_k-P_j)\quad\text{(L13, L14)}$$
 
-$$\text{time loop:}\quad w^\star = \mathrm{softmax}\!\Big(\tfrac{\beta}{T}A\,w^\star\Big)\ \text{is unique and reached geometrically whenever}\ T > \kappa_H = \tfrac{\beta}{4}\max_{ijkl}\big(A_{ik}-A_{jk}-A_{il}+A_{jl}\big)$$
-
-$$\text{era birth:}\quad M_t = S_t + \tfrac{1}{t+1},\ \ S_t=(S_{t-1}+w_t)\,\kappa p_t^{\kappa-1},\qquad \Pr(\text{any false birth}) \le \delta\ \ \text{(Ville, L24*)}$$
-
-### Where it stands
-
-| Piece | State |
-|---|---|
-| Lemmas | L1–L27 with Amendments A–C, plus [Amendment D](zero/docs/specs/2026-10-11-fcpa-amendment-D.md) (L28–L36: closed-loop error, horizon damping, linear insufficiency, the quadratic era model, CTC informativeness, calibration under dependence) |
-| Lean 4 | 35 files, **0 `sorry`** ([`lean/`](zero/lean/), [`CHANGES.md`](zero/lean/CHANGES.md)), including the undamped CTC fixed point (`hilbert_ctc_fixed_point`), the birth false-alarm bound, exact `partial_fit` and split-conformal coverage |
-| Estimator | [`fcpa/`](zero/fcpa/): 373 tests pass (Inspector rerun); `check_estimator` 50 passed, 1 skipped |
-| Seed-3 tuning bed | one-step error **0.0075 against persistence 0.030** (4× better); era identification from the estimated law **P3 = 0.928** against a 0.9 bar |
-| Preregistration | Amendments 11, 11a and 11b frozen by sha256 before any evaluation result ([`docs/specs/`](zero/docs/specs/)) |
-
-### What we got wrong, and what it taught
-
-- **A linear era model cannot win at fifty steps when its one-step map is composed.** The rollout gains energy through a momentum mode, and clipping the spectral radius does not touch it: $\sum_{j<50}\lVert \hat A^j\rVert$ is 4195 with or without clipping (L28). The best *direct* linear 50-step map sits exactly on persistence (L29). Any real long-horizon gain has to come from the quadratic advection term.
-- **Damping buys the rollout and sells the butterfly.** Shrinking increments is a rescaling of the model's clock, so $\lambda_{\text{model}} \approx \gamma\,\lambda_{\text{data}}$, and the frozen butterfly bar needs $\gamma \gtrsim 0.8$ (L28c).
-- **The first time loop ran too cold.** At $T=1$ the live loop sat 85× above $\kappa_H$ and refused every call. It cost nothing only because every blend had two eras, where the fixed point is uniform anyway (L32).
-- **The first birth guarantee assumed independent windows.** Navier–Stokes windows are autocorrelated, and the unrepaired detector alarmed 74% of the time on null streams. Calibrating the running maximum across independent trajectories restores the bound with no assumption inside a trajectory ([E1](zero/docs/specs/theory/E1_trajectory_calibrated_birth.md)).
-
-### The plan
-
-1. **Close the theory.** Amendment E brings in [L37](zero/docs/specs/theory/L37_shift_equivariant_era_ridge.md), the shift-equivariant era ridge. Every law of the bed is exactly invariant under $x$-shifts and the $\pi$-rotation, so the era model is restricted to the symmetric subspace $V_Q$ by training on 34 shifted copies of each chunk. That is exactly the restricted ridge, it keeps `partial_fit` exact, it is never worse than the unconstrained fit on any sample, and it cuts the quadratic library from 272,000 to 22,780 parameters. Amendment E also carries [L28c](zero/docs/specs/theory/L28c_damping_vs_butterfly.md) and the trajectory-calibrated birth rule E1. Preregistration 11c then freezes the resulting pins: κ = 0.8, CTC normalisation $q = 0.8$, trajectory-level calibration, and the law threshold re-picked on validation.
-2. **Prove it in Lean.** Formalise L28–L37 and E1, and port the project from Lean v4.7.0 to the pinned v4.34.1. The few results Mathlib still lacks (Hoeffding for chains, Ky Fan, Krasnosel'skii–Mann) stay cited, never `sorry`.
-3. **Build the era model.** Implement the $V_Q$ quadratic era ridge at $\gamma \ge 0.8$. It has to beat persistence at fifty steps on the tuning seed while keeping the one-step win and the butterfly bar. Measure the owned baselines (Global, ASMODEOUS) on the same seed so the real target is known.
-4. **Run the primary claim.** Five evaluation seeds, P1–P4 with the compute rules, the Holm family S1–S5, and the kill rules as frozen. If the claim fails, FCPA stays behind a feature flag, and the report says exactly which bar it lost.
-5. **Language.** Swap the Navier–Stokes bed for text. The time traveller becomes a true language model, eras become domains and periods of a corpus, and $\Delta E$ becomes the change of law between them: the address of where a fact lives.
-6. **Recursive self-learning at scale.** Eras hot-reload while the system runs, provenance tags keep self-generated data from collapsing the model, and Shapley values retire eras that no longer pay their way. Every birth stays under its false-alarm bound.
-
----
-
-## 1. Introduction
-
-Computation has a hidden assumption: that the whole state is always there, waiting. A transformer holds every token against every token. A dense network runs every weight on every input. A fixed-rate renderer draws every frame whether or not anything moved. The world does not work like this. A quantum system is a superposition until it is measured, and what is measured is a *choice* of basis that the observer makes. The idea of this project is to build a learner that is made the same way: **nothing is computed until it is observed, and the observer decides what is worth observing.**
-
-Picture a sphere cut into patches. Each patch is a small model of its own neighbourhood: a tiny predictor with its own few coordinates, valid only where it lives. No single patch covers the sphere. No single coordinate system ever can; that is a theorem, not a preference. The sphere is understood only by many small charts that agree where they overlap. Over the patches sits one decider, a softmax. It looks at the situation, assigns weight to the patches, and lets the heavy ones become real. The rest stay as potential: zero cost, zero parameters touched.
-
-That picture carries a chain of ideas, and each link gives the next its reason.
-
-1. **The observer.** Turing's watched-pot paradox, the quantum Zeno effect, says that a system measured often enough is frozen. The observer is not a spectator. It is part of the dynamics, and a model of computation that leaves it out leaves out the one operation that decides anything.
-2. **Quantum mathematics as an abstraction.** Linear superposition, then a measurement that breaks linearity: that two-step structure runs perfectly well on a classical GPU as complex linear algebra followed by a normalisation. No quantum hardware, no quantum claim, only the maths, which is the part that was always worth having.
-3. **Many tiny charts that become real only when observed.** The geometry is fragmented on purpose. Charts are cheap and numerous; compute is spent only on the few the observer chooses. Parameters scale with the number of charts and compute scales with the number *observed*.
-4. **The best of both worlds.** Two designs carry the idea. OBSERVER-ATLAS is a real-valued atlas of tiny JEPAs under a softmax observer. PHASE-SPHERE is the design of the project's origin notes: a phase sphere under a Born-rule decider. HYBRID takes the best part of each. Nothing is bound to either side; the measurements pick the winner per claim.
-5. **The time-traveller.** The observer is a closed loop. It reads the predicted futures of its candidate charts, and commits only to a choice that is consistent with the future it causes. START, travel, HALT: the answer reaches the decider before the decision.
-6. **Time laziness.** The same principle applies to the clock. Computation fires at events and idles in between, as in the A.E.T.H.E.R. event-driven architecture.
-
-That is the image the name carries. Asmodeus rules a legion, and the legion costs nothing until it is summoned: the king names a few, those few appear and act in their own small corner of the world, and the rest remain names. Here the legion is the atlas of charts, the summons is the observer's softmax, and the corner each one acts in is its chart.
-
-The result is a model whose cost follows what matters, whose parameters grow without its compute growing, and whose learned structure can be *read out as a topology* (an integer, a Betti vector, a holonomy) instead of being inferred after the fact.
-
-> This is something new. It is not JEPA, and it is not self-attention. JEPA, mixture-of-experts and attention are vocabulary and baselines here, not constraints.
-
----
-
-## 2. Background
-
-### Why an observer?
-
-An observer is the point where a continuum of possibilities becomes one outcome. Quantum mechanics names the operation (measurement), attention names its classical cousin (softmax over keys), and the body gives the everyday example: an intention picks a goal, and the geometry of the body computes the path. In every case there is a small decider on top and a rich local mechanism below, and the decider only has to pick, not to compute.
-
-The paradox that opens the project is that **the more often a system is watched, the less it moves**. Rotate a spin by a half-turn in $N$ equal steps and measure after each step; the survival probability of the starting state is
-
-$$P_{\mathrm{surv}}(N)=\cos^{2N}\!\left(\frac{\pi}{2N}\right)\;\xrightarrow{\;N\to\infty\;}\;1$$
-
-where $N$ is the number of measurements during the rotation and $P_{\mathrm{surv}}$ is the probability that every measurement finds the system still in its starting state. The observer changes what the system does. This is the first sign that an observer is a dynamical object and not a readout.
-
-### Prior Art
-
-Every part of the design has a closest owner. The table names what each owns and what Asmodeous ० adds on top. Each owner is a baseline, a source of vocabulary, and a point of comparison.
-
-| Work | What it owns | What Asmodeous ० adds |
+| Piece | State | Evidence |
 |---|---|---|
-| **MoP-JEPA** (arXiv [2607.05238v1](https://arxiv.org/abs/2607.05238)) | A context-only softmax router over K JEPA predictor heads on a shared encoder, with hard winner-take-all selection; fixes conditional-mean collapse. | A separate chart (encoder and embedding space) for every JEPA; lazy evaluation, so unselected charts cost nothing; gluing of charts into a higher-dimensional space; a topology readout from the observer. |
-| **Chart Auto-Encoders** (arXiv [1912.10094](https://arxiv.org/abs/1912.10094)) | Atlases of local charts with learned encoders, decoders and chart membership, for auto-encoding manifolds. | Predictive (JEPA) charts instead of reconstruction; an observer that routes among charts; lazy top-m evaluation; online nerve topology. |
-| **POUnets** (arXiv [2101.11256](https://arxiv.org/abs/2101.11256)) | Learned partitions of unity that glue local approximations, for regression. | Partition of unity as an observer over latent world-model charts; laziness; a nerve readout of the cover that was learned. |
-| **PEER** (arXiv [2407.04153](https://arxiv.org/abs/2407.04153)) | Retrieval of a few experts out of a very large pool by product keys; parameters grow while compute stays fixed. | Experts that are charts with their own coordinates, glued into one space, with the topology of their co-selection read out. |
-| **LeJEPA / SIGReg** (arXiv [2511.08544](https://arxiv.org/abs/2511.08544)) | An anti-collapse regulariser (SIGReg) for joint-embedding predictive learning. | SIGReg applied per chart and on the glued latent; observer competition as a second, independent anti-collapse mechanism, tested by ablation. |
-| **V-JEPA 2** (arXiv [2506.09985](https://arxiv.org/abs/2506.09985)) | Action-conditioned latent world models used for planning by model-predictive control. | An observer that reads the predicted futures of candidate charts before committing: a closed-loop decider with a fixed-point condition. |
-| **Mixture-of-Depths** | Per-token dynamic allocation of compute across layers. | Allocation across charts and across time, with the allocation itself carrying a topological readout. |
-| **Mapper** (Singh, Mémoli, Carlsson) | Post-hoc topological summary of a data cloud through a cover and its nerve. | The cover is learned online by the observer, so the nerve is read from the model while it runs. |
+| Spec and lemmas | L1–L37, Amendments A–D | [`2026-10-11-fcpa-design.md`](zero/docs/specs/2026-10-11-fcpa-design.md), [`fcpa-amendment-D.md`](zero/docs/specs/2026-10-11-fcpa-amendment-D.md) |
+| Estimator | numpy / scipy / scikit-learn; one test per lemma | [`zero/fcpa/`](zero/fcpa/), [`fcpa/tests/`](zero/fcpa/tests/) |
+| Preregistration | Amendments 11, 11a, 11b, 11c frozen by sha256 before any evaluation | [`FREEZE.md`](zero/docs/specs/FREEZE.md) … [`FREEZE4.md`](zero/docs/specs/FREEZE4.md) |
+| Calibration | trajectory-level calibration (L36 route R1) frozen as Amendment 11c | [`PREREG_AMENDMENT_11c.md`](zero/docs/specs/PREREG_AMENDMENT_11c.md), [PR #25](https://github.com/teerthsharma/Asmodeus/pull/25) |
+| Open blocker | a linear era model cannot beat persistence at 50 steps (L28, L29). The fix is L37, the shift-equivariant quadratic era ridge | [`L37_shift_equivariant_era_ridge.md`](zero/docs/specs/theory/L37_shift_equivariant_era_ridge.md) |
+
+FCPA and the TT line share their spine: eras of additive statistics, non-destructive birth, Ville-bounded change detection, and a softmax that routes between eras. The NS-2D bed tests the mechanism through a hard regression problem (quadratic advection over 50 steps), so [`PROGRAM.md`](zero/research/PROGRAM.md) §1 split the program: the switching-Markov beds isolate the mechanism, and FCPA carries the fluid claim.
 
 ---
 
-## 3. Theoretical Foundation
+## 9. Roadmap: 14 stages, and where we are
 
-Every object below is implemented in `atlas/`, and every identity is checked in `ref/` and the tests (Section 5).
+The full roadmap, with purpose, activities, deliverables, exit gate and common failure for every stage, is [`zero/research/ROADMAP.md`](zero/research/ROADMAP.md). A stage is **done** only when its exit gate closes, on fresh seeds or in Lean.
 
-### 3.1 Superposition, then a measurement that breaks linearity
+**Why this order.** Every architecture that lasted took the same path. The transformer won by training in parallel on GPUs, then by scaling predictably. Mixture-of-experts won once load balancing stopped router collapse. S4 → Mamba had theory first and competed only after a hardware-aware parallel scan made it fast. Neural Turing Machines and capsule networks stalled for lack of hardware fit and scaling evidence. So the order runs from cheap and decisive to expensive: an idea dies early, when it is cheap to kill, and is never scaled before its mechanism is shown to work.
 
-A state is a unit vector $\psi$ expanded in a basis $\{u_k\}$. Evolution is linear. The **decider** is the Born rule, the one non-linear step:
+### Phase 0: research ✓
 
-$$|\psi\rangle=\sum_k \alpha_k\,|u_k\rangle,\qquad \alpha_k=\langle u_k|\psi\rangle$$
+| # | Stage | Exit gate | Ours |
+|---|---|---|---|
+| 0 ✓ | Frame the idea | each claim falsifiable by a named experiment | [`PROGRAM.md`](zero/research/PROGRAM.md): H-core, claims C1–C6 with kill rules |
+| 1 ✓ | Formal objects and theory sketch | no component without a lemma | FCPA L1–L37 + era lemmas L38–L42 |
+| 2 ✓ | Toy beds and owned baselines | preregistered bars pass on fresh seeds | E0–E0c: 11× lower regret, no forgetting, 0 false eras |
+| 3 ✓ | Ablations and component tournament | winner beats incumbent on ≥ 8/10 paired seeds | E0d/E0e: MOM 10/10 vs SOFT |
+| 4 ✓ | Strong-learner controls at equal size | E1 bars B1, B2 | E1: 10/10 seeds; 15× lower regret than TF-META |
 
-$$p_k=\frac{|\alpha_k|^2}{\sum_j|\alpha_j|^2}=\mathrm{softmax}\big(2\log|\alpha_k|\big)_k$$
+### Phase 1: build and prove ◐ (now)
 
-Here $\alpha_k$ is the amplitude of $\psi$ along the chart gauge $u_k$ and $p_k$ is the probability of observing chart $k$. The second line is an exact identity, so a Born decider is a softmax over log-magnitudes. Softmax attention is a classical observer; the Born rule is its coherent form, and the two meet at one formula.
+| # | Stage | Exit gate | State |
+|---|---|---|---|
+| 5 ◐ | Decide every lemma in Lean | every lemma decided, Lean build clean | L38–L42 proved, incl. the merge threshold (L39d) and learned kernel (L41b); parameter rates cited |
+| 6 ○ | Engineering build: batched torch era bank, parallel-scan MOM filter in log space, mixed precision, checkpointing, era-usage monitoring | exact parity with the numpy reference on E0 seeds, plus a throughput target | in build; API frozen in [`phase2/INTERFACE.md`](zero/research/phase2/INTERFACE.md) |
+| 7 ○ | Real-data pilot: tokenizer, hash-pinned TinyStories, era heads as closed-form ridge readouts | a reproducible run that beats the owned n-gram baseline ([`lm/ngram.py`](zero/lm/ngram.py)) | next |
 
-### 3.2 Measurement as a POVM
+Phase 1 design of record ([`ROADMAP.md`](zero/research/ROADMAP.md) stage 6–7):
 
-A measurement that can be rotated, and therefore learned, is a positive operator-valued measure:
+- system of record: E0c era bank + MOM at α = 0.003, kept at α ≤ 0.0078 so L38 guarantees G2;
+- for language, era heads become closed-form ridge readouts on features, because count tables do not generalise to text;
+- era usage is monitored so one era never takes all the weight (the MoE router-collapse failure).
 
-$$E_k=U^\dagger \Pi_k\, U,\qquad \Pi_k=|k\rangle\langle k|,\qquad \sum_k E_k=U^\dagger\Big(\sum_k\Pi_k\Big)U=I,\qquad E_k\succeq 0$$
+### Phase 2 and later (run by Seal)
 
-where $U$ is a unitary with learnable parameters, $\Pi_k$ is the fixed projector onto basis state $k$, and $E_k$ is the effect that selects outcome $k$. Completeness $\sum_k E_k=I$ holds for every value of the parameters, so the measurement stays valid while it learns, and $p_k=\langle\psi|E_k|\psi\rangle$.
-
-### 3.3 The softmax observer is a partition of unity; charts glue into $\mathbb{R}^{D_g}$
-
-The observer scores every chart against a query and normalises:
-
-$$w_k(x)=\mathrm{softmax}_k\!\left(\frac{q(x)\cdot\kappa_k}{\sqrt d}\right),\qquad w_k(x)\ge 0,\qquad \sum_k w_k(x)=1$$
-
-where $q(x)$ is the query computed from the context at input $x$, $\kappa_k$ is the learned key of chart $k$, and $d$ is the key width. The weights sum to one at every input, which is the definition of a partition of unity subordinate to the cover by chart domains. Keep the heaviest $m$ charts $S=\text{top-}m(w)$ and renormalise. Chart $k$ encodes the observation into its own small coordinates $z_k=E_k(o)\in\mathbb{R}^{d_c}$ and a gluing map $\phi_k:\mathbb{R}^{d_c}\to\mathbb{R}^{D_g}$ with $D_g>d_c$ places it in the shared space:
-
-$$g=\gamma\sum_{k\in S}\tilde w_k\,\phi_k(z_k),\qquad \tilde w_k=\frac{w_k}{\sum_{j\in S}w_j}$$
-
-where $\gamma\in[0,1]$ is a learned gate that lets the observer observe nothing (a causal softmax with no gate collapses onto a single token; see Section 5), and $g$ is the glued latent. Predictions glue the same way: $\hat g_{t+1}=\gamma\sum_{k\in S}\tilde w_k\,\phi_k\big(P_k(z_k,a_t)\big)$, with $P_k$ the tiny predictor of chart $k$ and $a_t$ the action.
-
-### 3.4 The lazy rule: observed → exists
-
-Only the charts in $S$ run their encoder and predictor. Unselected charts are never read. The cost of a step is routing plus $m$ tiny charts:
-
-$$C_{\text{step}}=C_{\text{route}}+m\,C_{\text{chart}},\qquad C_{\text{route}}=O(K\,d)\ \text{(flat keys)}\ \text{ or }\ O(\sqrt K\,d)\ \text{(product keys)}$$
-
-where $K$ is the number of charts, $m\ll K$ the number observed, and $C_{\text{chart}}$ the cost of one tiny JEPA. The dense reference costs $K\,C_{\text{chart}}$. Parameters grow with $K$, compute does not. The lazy top-$m$ computation is checked against the dense mixture that zeroes the same weights (parity), and the unselected charts are checked to cost nothing.
-
-### 3.5 How many charts does a manifold need?
-
-No single chart covers a closed manifold without tearing (invariance of domain). With $\mathrm{cat}$ the Lusternik–Schnirelmann category and $\mathrm{atlas}(M)$ the least number of ball charts that cover $M$:
-
-$$\mathrm{cat}(M)+1\;\le\;\mathrm{atlas}(M)\;\le\;n+1,\qquad n=\dim M$$
-
-By these bounds the sphere $S^n$ needs 2 charts, the torus $T^2$ and the Klein bottle need 3, and $SO(3)\cong\mathbb{RP}^3$ needs 4. The atlas stops tearing at $K=\mathrm{atlas}(M)$, and not before. A rotation in $SO(3)$ has no continuous representation in four Euclidean dimensions or fewer, while five or six suffice, which is why the charts are glued into a space of higher dimension than their own.
-
-### 3.6 The nerve of the observer and its Betti numbers
-
-Charts that are read together form a simplicial complex. For a threshold $\tau$:
-
-$$N_\tau=\Big\{\sigma=\{k_0,\dots,k_r\}\;:\;\exists\,x\ \text{with}\ w_{k_i}(x)\ge\tau\ \ \forall i\Big\}$$
-
-$$\beta_j=\dim_{\mathbb{Z}_2}H_j\big(N_\tau;\mathbb{Z}_2\big)$$
-
-Here the vertices are the charts, a simplex is a set of charts co-selected with weight at least $\tau$ on some input, and $\beta_j$ is the $j$-th Betti number over $\mathbb{Z}_2$. By the nerve theorem a good cover has the homotopy type of its nerve, so the learned topology can be read from the observer while the model runs. Over $\mathbb{Z}_2$ the targets are $S^2:(1,0,1)$, $T^2:(1,2,1)$, $\mathbb{RP}^3:(1,1,1,1)$. A partition of unity places at most $\lfloor 1/\tau\rfloor$ charts above $\tau$, and a top-$m$ nerve has dimension at most $m-1$; both bounds are properties of the readout and are accounted for in its design.
-
-### 3.7 The phase sphere: amplitudes, transition phases, Chern number, holonomy
-
-The origin notes read "jepa as a phase over higher dimensional $S^2$ sphere; small phases all around the sphere; the decider will be a softmax". In this reading the state is a point of projective Hilbert space, $\psi\in\mathbb{CP}^{N-1}$ (the Bloch sphere $\mathbb{CP}^1=S^2$ is the first case), and the small phases are the $U(1)$ fibre. Each chart is a local gauge:
-
-$$\alpha_k=\langle u_k|\psi\rangle,\qquad z_k=V_k^{\dagger}\psi\,e^{-i\arg\alpha_k},\qquad \hat z_k=\mathrm{Cayley}\big(X_k(a)-X_k(a)^{\dagger}\big)\,z_k$$
-
-where $u_k\in\mathbb{C}^N$ is the learned gauge of chart $k$, $V_k$ a learned frame, the factor $e^{-i\arg\alpha_k}$ fixes the gauge so that $g$ does not depend on the global phase of $\psi$, and $\hat z_k$ is the local unitary step driven by the action $a$ (a Cayley transform of a skew-Hermitian generator is unitary). Neighbouring gauges differ by a **transition phase**:
-
-$$\chi_{jk}=\arg\big(\alpha_j\,\overline{\alpha_k}\big)$$
-
-and the topological readout is an integer. For a triangulated sphere of states, take the link variables $U_{ab}=\langle\psi_a|\psi_b\rangle/|\langle\psi_a|\psi_b\rangle|$ and the plaquette field strength $F_\square=\arg\!\big(U_{12}U_{23}U_{31}\big)$ on the principal branch. The lattice **Chern number** (Fukui–Hatsugai–Suzuki) is
-
-$$c_1=\frac{1}{2\pi}\sum_{\square}F_\square$$
-
-where the sum runs over the oriented triangles of the lattice and $c_1\in\mathbb{Z}$ up to an orientation convention. Its magnitude is 1 for the Hopf bundle $S^3\to S^2$, the spin-½ monopole, and 0 for a trivial bundle. Along a closed path the same links give the **Berry phase**, the holonomy of the state:
-
-$$\gamma(C)=-\arg\prod_j\langle\psi_j|\psi_{j+1}\rangle,\qquad \gamma=-\tfrac12\,\Omega\ \ \text{(spin-½)}$$
-
-where $C$ is the closed loop of states and $\Omega$ is the solid angle the loop encloses on the sphere. A transported frame returns with a sign $\pm1$ around the non-orientable loop of a Klein bottle and with sign $+1$ around every loop of a torus, so the holonomy sign separates the two surfaces at the level of individual loops.
-
-### 3.8 The closed loop: the observer as a fixed point
-
-The loop in the origin notes, the observer's closed time-like curve, is a self-consistency condition (Deutsch's condition $x=F(x)$):
-
-$$w^\star=D\big(P_h(z,\,w^\star)\big),\qquad w^{(i+1)}=D\big(P_h(z,\,w^{(i)})\big),\qquad \text{halt when } \|w^{(i+1)}-w^{(i)}\|<\varepsilon$$
-
-where $z$ is the current state, $w$ the observer's choice of charts, $P_h(z,w)$ the predicted state $h$ steps ahead when the charts $w$ are read, and $D$ the decider that maps a predicted future to a choice. The observer's choice must equal the choice it would make after seeing the future that choice causes. A continuous map of the simplex into itself always has a fixed point (Brouwer), so the loop always has an answer and there is no paradox. The Gödel figure of the origin shows the same shape: the halting answer returns to the axis *before* the start event. An **amortised head** learns $\hat w(z)\approx w^\star(z)$ in one shot (trained by a KL divergence to the converged $w^\star$), so the answer exists before the iteration that defines it runs.
-
-### 3.9 The butterfly bonded by topology
-
-The continuous state may be chaotic while the integer readout stays put. With $J_t$ the Jacobian of the latent rollout at step $t$,
-
-$$\lambda_1=\frac1h\log\Big\|\prod_{t=1}^{h}J_t\Big\|$$
-
-is the finite-time largest Lyapunov exponent over the horizon $h$. The claim is that $\lambda_1>0$ (the continuous dynamics is sensitive) while the discrete readouts ($c_1$, the holonomy class, the Betti vector) cannot change under small perturbations unless a gap closes. The butterfly is bonded by topology.
-
-### 3.10 Event-driven time laziness (A.E.T.H.E.R.)
-
-The A.E.T.H.E.R. event-driven architecture renders a frame only when the scene has changed enough. With $\mu(t)\in\mathbb{R}^d$ the scene-feature vector, the deviation and the trigger rule are
-
-$$\Delta(t)=\big\|\mu(t)-\mu(t-\delta t)\big\|_2,\qquad \text{fire iff }\ \Delta(t)\ge\epsilon$$
-
-and, with $v(t)=\tfrac{d}{dt}\|\mu(t)\|$, the effective rate and the number of frames over a duration $T$ are
-
-$$\mathrm{FPS}(t)\approx\frac{\|\dot\mu(t)\|}{\epsilon(t)},\qquad N_f=\int_0^T\mathrm{FPS}(t)\,dt\approx\int_0^T\frac{\|\dot\mu(t)\|}{\epsilon(t)}\,dt$$
-
-where $\epsilon(t)$ is a threshold that the controller adapts, so the system raises it in noise and lowers it when motion matters. The same paper defines the adaptive measurement as a POVM $E_k(\Phi)=U^\dagger(\Phi)\,\Pi_k\,U(\Phi)$ with $\sum_k E_k=I$ for every parameter $\Phi$, which is exactly the measurement of Section 3.2. The two laziness axes compose: space decides *which charts* run (Section 3.4) and time decides *at which instants* anything runs at all.
+| # | Stage | Exit gate |
+|---|---|---|
+| 8 | Equal-compute comparison with small GPTs, rebuilt from scratch | a win, a tie, or a clearly stated niche |
+| 9 | Scaling study, 3–5 sizes | a slope at least as good as the baseline's |
+| 10 | Robustness and failure analysis | shift, long context, OOD, seed variance, what each era holds |
+| 11 | Composition: era heads as a layer inside an existing model | downstream benchmarks |
+| 12 | Release and replication | someone outside reproduces the main result |
+| 13 | Adoption | tools, integrations, a demo people use |
 
 ---
 
-## 4. The parents, and the parts ASMODEOUS is made from
+## 10. How the research is run
 
-ASMODEOUS takes its parts from two parents, and both parents also run in full as first-class candidates. Every model runs on the same beds, seeds and metrics through one contract (`common.py`). A part that wins is kept and built on; a part that loses is replaced.
+These rules are enforced in code, not only stated ([`zero/CLAUDE.md`](zero/CLAUDE.md), [`zero/tests/test_laws.py`](zero/tests/test_laws.py)).
 
-### 4.1 OBSERVER-ATLAS
+- **L-PREREG: bars before results.** Every bar is written and its sha256 recorded in [`e0/FREEZE.txt`](zero/research/e0/FREEZE.txt) or a `FREEZE*.md` before the first evaluation number exists. [`zero/PREREG.md`](zero/PREREG.md) is append-only; `test_prereg_read_only` fails any commit that edits a committed line.
+- **Fresh seeds, never reused.** Tuning seeds are separate from evaluation seeds, and each round uses seeds no earlier round has seen:
 
-<p align="center"><img src="zero/docs/fig/observer_sphere.svg" width="92%" alt="The observer choosing charts on a sphere"/></p>
+  | Round | Eval seeds |
+  |---|---|
+  | E0 | 0–9 |
+  | E0b | 10–19 |
+  | E0c | 20–29 |
+  | E0d | 30–39 |
+  | E0e | 40–49 |
+  | E1 | 50–59 |
+  | next | 60+ |
 
-The atlas is **K tiny JEPAs** with private charts. Chart $k$ has an encoder $E_k:o_t\to z_k\in\mathbb{R}^{d_c}$ with $d_c$ small, a predictor $P_k:(z_k,a_t)\to\hat z_k$ in the same chart, a stop-gradient or EMA target encoder, and a gluing map $\phi_k$. A small causal backbone produces the context $c_t$, the observer turns it into the weights of Section 3.3, a gate lets it observe nothing, and only the top-$m$ charts run.
-
-<p align="center"><img src="zero/docs/fig/lazy_compute.svg" width="92%" alt="Lazy compute: only the observed charts execute"/></p>
-
-<p align="center"><img src="zero/docs/fig/glue_nerve.svg" width="92%" alt="Charts glued by a partition of unity into R^Dg, and the nerve that results"/></p>
-
-The loss is the sum of: a per-chart JEPA loss against the stop-gradient target in the same chart, an overlap consistency term that makes co-selected charts agree in $\mathbb{R}^{D_g}$, SIGReg per chart and on $g$, a router load-balance term, and the task loss through $g$. Every structure the model uses (charts, routing, gluing, the manifold itself) is learned by SGD; hand-given structure scores as "representable only", never as "works".
-
-### 4.2 PHASE-SPHERE
-
-The design of the origin notes, built as: $\psi_t=\mathrm{normalise}(E(o_t))\in\mathbb{C}^N$; $K$ learned chart gauges $u_k$ and a null gauge $u_\varnothing$; a Born decider with a "nothing" outcome ($\gamma=1-p_\varnothing$); lazy gauge-fixed charts $z_k$ for the top-$m$ only; a Cayley-unitary local dynamics; glue $g=\gamma\sum_k\tilde w_k\,\phi_k([\mathrm{Re}\,z_k,\mathrm{Im}\,z_k])$; transition phases $\chi_{jk}$; and the closed-loop observer of Section 3.8 with its amortised head. Its readouts are the Chern number of Section 3.7 and the Berry holonomy along held-out loops. Because amplitudes enter only through $K\cdot N$ Born scores, $K$ needs no product keys.
-
-### 4.3 HYBRID
-
-`HybridAtlas` is the composition of three parts: the real charts of OBSERVER-ATLAS, the coherent decider $p=|U\psi|^2$ with $\psi_k=\sqrt{\mathrm{softmax}(s)_k}\,e^{i\theta_k(q)}$ and $U$ a low-rank Cayley rotation, and the time-traveller loop (START preselects $M$ charts, the life-line rolls their candidate futures, HALT is the self-consistent set). Nothing is bound together by hand: every part has a limit in which it vanishes, and the arm starts at those limits.
-
-$$\text{no coherence, no phase}\ \Rightarrow\ \text{OBSERVER-ATLAS},\qquad \text{no loop}\ \Rightarrow\ \text{coherent decider},\qquad \text{no coherence}\ \Rightarrow\ \text{time-traveller atlas}$$
-
-so the hybrid contains OBSERVER-ATLAS, the coherent atlas and the time-traveller atlas as special cases, and learns how far from each to move.
-
-### 4.4 The time-traveller
-
-<p align="center"><img src="zero/docs/fig/ctc_loop.svg" width="92%" alt="A closed timelike curve with START and HALT, and an observer reading predicted futures before committing"/></p>
-
-The origin figure of the notes is the Gödel-universe closed timelike curve: a life-line that leaves the axis at START, spirals out to where the angular circles turn time-like, rides them backward in $t$, and returns to the axis at HALT, earlier than it left. In the architecture the life-line is the roll-out of candidate futures, and HALT is the self-consistent choice. The observer does not guess a chart and then find out. It reads what each candidate would predict and commits to the choice that survives its own prediction, and an amortised head learns to produce that choice in a single pass.
-
-### 4.5 Event-driven time
-
-<p align="center"><img src="zero/docs/fig/event_time.svg" width="92%" alt="Computation only at events, idle between"/></p>
-
-The A.E.T.H.E.R. paper moves the same laziness into time. Computation is triggered by a deviation $\Delta(t)\ge\epsilon$, so a quiet scene costs nothing and a busy one costs what it must. Combined with the lazy charts, a step is paid for only when something happened *and* only on the charts that the observer chose.
-
-### 4.6 The owned arms: fair baselines
-
-Every owned method is a baseline, built to the same contract, trained by SGD, and matched to the atlas at **equal active FLOPs and equal total parameters** (`arms/match.py`, preregistered in `PREREG_DRAFT_arms.md`). Where one configuration cannot hit both targets, two baselines run, one per axis, and the atlas must beat each on the axis it is matched on.
-
-| Arm | Role |
-|---|---|
-| Single JEPA, at several latent widths | The Whitney baseline: one chart wide enough to embed the manifold. |
-| MoP-JEPA (dense and lazy) | The closest owner: K predictor heads on a shared encoder behind a context-only softmax router. |
-| Chart-AE JEPA | Owner of separate charts and gluing, with membership over all K charts. |
-| Lazy chart-AE JEPA | The observer ablation: the atlas without the backbone, the gate and the keys. |
-| PEER-JEPA | The owned route to "parameters grow, compute stays fixed" by product-key experts. |
-| CEM planner | V-JEPA-2-AC-style model-predictive control over any arm's rollout, with planning compute equalised across arms. |
+- **Owned baselines, tuned equally.** GLOBAL-o1, GLOBAL-o2, EMA and BOCPD are tuned on the same tuning seeds as the new arms ([`PROGRAM.md`](zero/research/PROGRAM.md) §6).
+- **Disclose every re-run.** Tournament round 2 and E1's run location are written up as amendments, with the reason ([`E0e_PREREG.md`](zero/research/E0e_PREREG.md), [`E1_AMEND1.md`](zero/research/E1_AMEND1.md)).
+- **R&D tournament.** Every candidate variant is built and run; the winner goes into `main`.
+- **L-GIVEN: structure learned, not given.** Eras, their number and the momentum kernel are learned from the stream.
+- **Measured is not proven.** A result is "proven" only with its lemma in Lean.
 
 ---
 
-## 5. Verified identities
+## 11. What we got wrong, and what it taught
 
-Everything the mathematics stands on is a checked identity before it is a design. Every line below is produced by `ref/identities.py` (pinned by SHA-256) or asserted by a passing test in `tests/` (`test_facts.py`, `test_phase_sphere.py`, `test_coherent_observer.py`, `test_povm.py`, `test_asmodeous_ops.py`, `test_t6.py`, `test_observer_atlas.py`, `test_arms.py`, `test_topology.py`, `test_bench_t7.py`).
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ASMODEOUS ०   ·   verified identities
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Pin        SHA-256 of ref/identities.py      467c2ae2…40a3fe   matches the pin
-  Zeno       cos^(2N)(π/2N), N=1,2,10,100,1000  0.000000 0.250000 0.780546 0.975627 0.997536
-                                               simulated survival equal to 6 decimals
-  Born       p = softmax(2 log|α|)              = |α|²/Σ|α|²   atol 1e-12, 100×9 complex128
-  Lüders     max|QQ|, pure and mixed states     < 1e-14        QQ equality holds
-  Classical  mean|QQ|, + disturbance            0.0751         QQ equality breaks
-  Softmax    causal stack, mass on token 1      0.2543 (L=1) → 1.0000 (L=16)
-  IIA        p1/p2, key 3 present / removed     softmax 1.3499 / 1.3499
-                                               coherent g=1  2.0587 / 1.3499
-  Cayley     U†U = I, 50 random generators      atol 1e-10
-  POVM       Σ_k E_k = I, E_k ⪰ 0, K = N and     atol 1e-10; Naimark K > N via isometry V,
-             K > N (Naimark), 50 draws each       Born p = |Uψ|², Σ p = 1
-  Parity     lazy top-m == dense masked mix     atol 1e-10 (float64), K=8 flat, K=16 product keys
-  Laziness   unselected charts NaN-poisoned     g, ĝ, loss unchanged (atol 1e-12); dense control → NaN
-  FLOPs      active MACs, m vs K                per-chart cost exact in m; K enters only the router
-  Kernel     fused Triton step == observe()     1e-4, K = 16 … 4096, flat and product keys
-  Berry      γ = −Ω/2, spin-½ latitude loops     5/5 latitudes; 200 triangles exact to 1e-9
-  Chern      FHS lattice, levels 2, 3, 4         spin-½ −1 · spin-1 −2 · trivial 0
-  Holonomy   transported sign                    Klein −1 · torus +1
-  Fixed pt   w* = D(P(z, w*)), 1000 stochastic    residual < 1e-8
-  Betti Z2   S² · T² · Klein · RP³               (1,0,1) · (1,2,1) · (1,2,1) · (1,1,1,1)
-  Betti Q    T² · Klein                          (1,2,1) · (1,1,0)
-  Nerve      top-m readout, 20 seeds             dim ≤ m−1; PoU at τ: dim ≤ ⌊1/τ⌋−1
-  Frame      V†V = I, Stiefel retraction         < 1e-10 at K = 16, 65, 257
-  Tight      Σp = 1 for K > N outcomes            < 1e-10, p ≥ 0
-  CTC loop   damped fixed point                  residual < 1e-8; unique from 10 starts
-  Links      G_jk unitary, exact cocycle          < 1e-10
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+- **The first era bank over-split laws** (4 to 8 eras for 4 laws, E0b). The merge only checked the active era. A global Bayes-factor merge plus 64 transitions of evidence fixed it on fresh seeds, at no loss cost, because the filter, not the active era, makes the prediction ([`VERDICT_E0.md`](zero/research/VERDICT_E0.md)).
+- **The first tournament round tuned on the wrong objective.** Leaving NOREC out pushed every decider to α = 0.01 and broke gate G2. L38 later showed why: G2 is guaranteed only for α ≤ 0.0078 with MOM ([`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md), [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md)).
+- **The CTC loop is not the decider.** It was the first reading of "TT". As a contraction it cannot sharpen weights (L32), and measured it never beat the plain filter. The notes, read at 400 dpi, say the TT is the softmax ([`PROGRAM.md`](zero/research/PROGRAM.md) Addendum 1).
+- **"Chronal fluid" was first read as the data's density.** Seal's notes say the fluid is the liquid of eras, and its density is the TT's own weight $w_t$. Addendum 1 was withdrawn ([`PROGRAM.md`](zero/research/PROGRAM.md) Addendum 2).
+- **"No forgetting, unconditionally" is false.** A re-address moves recent tokens. The proved statement covers settled tokens ([`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md) L40).
+- **On the fluid bed, a linear era model cannot beat persistence at 50 steps** (L28, L29). The fix is the quadratic era ridge L37 ([`L37_shift_equivariant_era_ridge.md`](zero/docs/specs/theory/L37_shift_equivariant_era_ridge.md)).
 
 ---
 
-## 6. The experiments
+## 12. Honest limits
 
-Each claim of the project is a question put to a measurement. The beds, the bars and the kills are written into [`PREREG.md`](zero/PREREG.md) and committed before any result file exists, and every claim is scored for all three candidates under the same beds, seeds, matched sizes and owned baselines. The verdict for a claim names whichever candidate passes it.
+From [`ROADMAP.md`](zero/research/ROADMAP.md) "Risks carried forward" and the three verdicts:
 
-| Test | The question |
-|---|---|
-| **T0** reproduce | Does `ref/identities.py` reproduce its pinned output? |
-| **T1** owner hunt | Is the full combination already owned? Every owned part is cited and used as a baseline. |
-| **T2** geometry (C1, C2) | On the sphere, torus, Klein bottle and $SO(3)$, with no manifold, chart or state ever given, does the atlas stop tearing at exactly $K=\mathrm{atlas}(M)$ with charts of the manifold's own dimension, and does the nerve recover the true Betti numbers online? A neutral flat bed runs beside them. |
-| **T3** lazy scaling (C3) | At fixed active compute, does loss fall as the number of charts $K$ grows, below a dense JEPA and below one JEPA with PEER experts? Does lazy top-$m$ stay within tolerance of the soft mixture over all $K$? |
-| **T4** collapse (C4) | With the anti-collapse regulariser weakened or removed, does observer competition keep the representation from collapsing? Does the atlas match MoP-JEPA on mode collapse on OGBench pointmaze-stitch? |
-| **T5** time-traveller (C5) | Does reading predicted futures before committing beat owned latent MPC at equal planning compute, on MuJoCo swing-up and OGBench pointmaze? |
-| **T6** contextuality | Do query pairs show order effects and QQ-equality statistics as a quantum-structured observer predicts? Measurement only. |
-| **T7** systems | Do lazy routing and tiny JEPAs run faster on an RTX 4060 than a dense JEPA of equal quality? |
-
-The origin-derived readouts are scored alongside, for every candidate where they are defined:
-
-| Test | The question |
-|---|---|
-| **TO1** Chern | Does the learned amplitude bundle read $|c_1|=1$ on the Berry bed and $0$ on its trivial control? |
-| **TO2** fixed point | Does the closed-loop observer converge, and does it beat one-pass routing at equal FLOPs? |
-| **TO3** halt before start | Does a one-shot head predict the converged $w^\star$ at a fraction of the loop's cost? |
-| **TO4** butterfly | Is $\lambda_1>0$ while the integer readouts stay put under perturbation? |
-| **TO5** scattering front end | Does a multiscale scattering cascade reach the same prediction quality in fewer steps? |
-| **TO6** rays through a lattice | Does ray-cast selection over a grid of charts match product keys at lower cost? |
-| **TO7** holonomy | Does the sign of the holonomy along held-out loops separate the torus from the Klein bottle? |
-
-The hybrid is held to the "best of both" claim directly: on each claim it must be at least as good as the better parent, and strictly better than both on at least one preregistered claim. Ablations that switch each part off decide which part earned a win.
+- **Synthetic evidence.** Every win so far is on order-1 Markov switching beds built to favour eras. Stage 7 starts on real text.
+- **Scale of the context-reading competitor.** The best context reader was a 0.86M transformer; the meta-trained GRU never learned in context. A larger in-context control belongs to phase 2.
+- **Sequential filter.** The reference filter runs token by token. The fix is the stage 6 parallel scan.
+- **Proof and code drift.** Lean proves the maths, not the Python. Property tests must pin the code's constants to each lemma's hypotheses.
+- **Shared prior.** The oracle and every count model use the generating prior a = 0.2 ([`VERDICT_E0.md`](zero/research/VERDICT_E0.md)).
+- **Grid edges.** Tuned δ = 0.05, w = 32 and $n_{\min}$ = 64 sit on the edges of their frozen grids.
+- **MOM's 50/50 split** between $\tilde Q$ and uniform was fixed, not tuned.
 
 ---
 
-## 7. Quick Start
+## 13. Reproduce
+
+Requirements: Python 3.11, numpy. torch for E1 and the engine; scipy and scikit-learn for FCPA; Lean 4 (elan) for the proofs.
 
 ```bash
-cd zero
+git clone https://github.com/teerthsharma/Asmodeus && cd Asmodeus/zero/research/e0
 
-# T0: the reference identities (numpy only); compare with ref/identities.out
-python ref/identities.py
+# E0 → E0e: numpy only, 4 CPU cores, about 15 minutes in total
+python -m pytest -q test_e0.py      # sanity tests
+python run.py && python score.py    # E0
+python run_e0b.py                   # E0b
+python run_e0c.py                   # E0c (architecture of record: era bank)
+python run_e0d.py                   # E0d tournament, round 1
+python run_e0d.py e0e               # E0e tournament, round 2 (MOM wins)
 
-# the observer-atlas tests
-python -m pytest tests/test_observer_atlas.py -q
+# E1: era bank vs GRUs and a meta-trained transformer (torch, CPU is enough; about 1.5 h)
+cd ../e1
+python run_e1.py all                # or: era | online | meta GRU-META | meta TF-META | score
 
-# the Berry, Chern and Betti fact tests
-python -m pytest tests/test_facts.py -q
+# FCPA estimator tests
+cd ../../ && python -m pytest -q fcpa/tests
 
-# the owned baselines: contracts, laziness, MoP-JEPA fidelity
-python -m pytest tests/test_arms.py -q
+# Lean: build and check there is no sorry
+cd lean && lake build && python check_no_sorry.py
 
-# size every owned arm against the atlas at equal active FLOPs and equal parameters
-python -m arms.match
+# Repository laws (run before every commit)
+cd .. && python -m pytest -q tests/test_laws.py
 ```
 
-The build targets Python 3.11, torch 2.14 and a single consumer GPU (an RTX 4060). No quantum hardware is involved.
+Sources: [`zero/research/README.md`](zero/research/README.md), [`e1/run_e1.py`](zero/research/e1/run_e1.py) docstring, [`lean/ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md).
 
 ---
 
-## 8. Layout
+## 14. Repository layout
 
 ```
 zero/
-├── ASMODEOUS.md                the architecture, slot by slot
-├── atlas/                      ASMODEOUS and its parents
-│   ├── asmodeous.py            ASMODEOUS: Parseval POVM, gauge links, damped CTC loop
-│   ├── observer_atlas.py       OBSERVER-ATLAS: tiny JEPAs, gated softmax observer, lazy top-m, gluing
-│   ├── phase_sphere.py         PHASE-SPHERE: Born decider, gauge-fixed charts, Chern, holonomy, fixed point
-│   ├── coherent_observer.py    the coherent (Born, phased) decider on atlas charts
-│   ├── povm.py                 projective and Naimark POVMs
-│   ├── time_traveller.py       the START / life-line / HALT planning loop
-│   └── hybrid.py               HYBRID: atlas + coherent decider + time-traveller
-├── fcpa/                       FCPA: the scikit-learn estimator, beds, bars and the primary runner
-├── lean/                       Lean 4 proofs of the FCPA lemmas (0 sorry)
-├── docs/specs/                 FCPA spec, amendments, preregistration, freezes, errata, audits
-├── arms/                       the owned baselines, matched at equal active FLOPs and params
-│   ├── single_jepa.py  mop_jepa.py  chart_ae.py  lazy_chart_ae.py  peer_jepa.py
-│   ├── planner.py              CEM planner
-│   └── match.py                L-BR sizing
-├── docs/fig/                    the five diagrams of this README
-├── beds/                       neutral and designed beds (manifolds, Berry, swing-up, OGBench)
-├── ref/                        reference identities, Berry and Betti checkers, triangulations, origin notes
-├── tests/                      pytest suites for every module above
-├── metrics.py                  discontinuity, nerve Betti, effective rank, chart transitions, holonomy
-├── sigreg.py                   shared anti-collapse regulariser
-├── common.py                   the contract every arm and bed obeys
-├── PROMPT.md  ORIGIN.md        the OBSERVER-ATLAS spec and the origin's design
-└── PREREG.md                   bars and kills, committed before any result
+├── research/                    the chronal fluid line: TT, eras, MOM
+│   ├── PROGRAM.md               hypothesis H-core, claims C1–C6, kill rules, Addenda 1–4
+│   ├── ROADMAP.md               14 stages with exit gates; where we are
+│   ├── origin_notes_transcription.md   Seal's handwritten notes, in full
+│   ├── VERDICT_E0.md            E0/E0b/E0c: era memory vs owned learners
+│   ├── VERDICT_TOURNAMENT.md    E0d/E0e: six deciders; MOM wins
+│   ├── VERDICT_E1.md            E1: era bank vs context readers
+│   ├── E0b…E0e_PREREG.md, E1_PREREG.md, E1_AMEND1.md   frozen bars
+│   ├── e0/                      numpy reference: bed.py, arms.py (era bank), deciders.py (SOFT, MOM, …), runners, results
+│   ├── e1/                      GRU and transformer controls, results in e1/out/
+│   └── phase2/INTERFACE.md      frozen API of the torch era LM (stage 6–7)
+├── lean/                        Lean 4 proofs: FCPA L1–L37 and era lemmas L38–L42 (0 sorry)
+│   ├── FCPA/                    one file per lemma
+│   ├── ERA_LEMMAS.md            L38–L42 statements, proofs, status
+│   └── CHANGES.md               every statement change against the spec
+├── fcpa/                        FCPARegressor: the scikit-learn estimator, NS-2D bed, bars, runner, tests
+├── docs/specs/                  FCPA spec, amendments, freezes, errata, audits, theory notes (L28c, L37, E1)
+├── lm/, run_lm.py, beds/lang.py LM harness and the owned n-gram baseline used by stage 7
+├── queue/, hooks/               long-run job queue; pre-commit gates
+├── tests/                       repository laws (test_laws.py) and harness tests
+├── ref/origin/                  the original notes and the Gödel-universe CTC figure
+├── PREREG.md                    append-only preregistration of the FCPA line
+├── ORIGIN.md                    the first reading of the notes
+└── CLAUDE.md                    folder rules: new design, measurement honesty
 ```
 
 ---
 
-## License
+## 15. Glossary
+
+| Term | Meaning |
+|---|---|
+| **TT** | time traveller: the softmax decider over eras |
+| **era** | a constant-law stretch of time and the small model of that law |
+| **chronal fluid data density** | $w_t$, the TT's weight over the pool of eras |
+| **MOM** | momentum decider: weight flows along a learned era-to-era kernel |
+| **SOFT** | fixed-share decider (Herbster–Warmuth): uniform spreading |
+| **HARD** | answer with the top era alone when its weight ≥ θ |
+| **CTC loop** | closed-timelike-curve fixed point; the TT's return trip, not its answer |
+| **BOCPD** | Bayesian online changepoint detection; the novelty expert and the strongest owned baseline |
+| **e-detector** | anytime-valid change test; false alarms ≤ δ by Ville's inequality |
+| **address** | choosing which era explains a window: a bank era (jump) or a fresh one (birth) |
+| **BF** | Dirichlet–multinomial Bayes factor; decides merges |
+| **regret** | loss above the oracle that knows the true regime, nats/token |
+| **REC / NOREC / NULL / CYC / CYC-S** | the synthetic beds (§6) |
+| **owned baseline** | a baseline we build and tune ourselves, as hard as the new method |
+| **FCPA** | Fluid Chrononal Predictive Architecture: the fluid-dynamics line (§8) |
+| **phase 0 / 1 / 2** | research / build and prove / compare and scale |
+
+---
+
+## 16. License
 
 Attribution License. Free to use, copy, modify and distribute, provided that the original creator, Teerth Sharma, is credited as the inventor. See [`LICENSE`](LICENSE).
 
----
+```bibtex
+@misc{sharma2026asmodeus,
+  author = {Teerth Sharma},
+  title  = {Asmodeus: a time traveller on a chronal fluid},
+  year   = {2026},
+  url    = {https://github.com/teerthsharma/Asmodeus}
+}
+```
 
 <p align="center"><i>Invented by <a href="https://teerthsharma.vercel.app">Teerth Sharma</a></i></p>
