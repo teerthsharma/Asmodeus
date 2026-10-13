@@ -165,12 +165,28 @@ def sequential(out, d):
     return loss, single / Tm1
 
 
-def run(out, d, method="auto", chunk=128):
+def run(out, d, method="auto", chunk=128, mem_bytes=1 << 28):
     """Decider losses. 'auto': the chunked scan on CUDA (few launches), the token loop on CPU (less work: the scan
-    multiplies n x n matrices, the loop only vectors)."""
-    if method == "auto":
-        method = "scan" if out.p_era.is_cuda else "sequential"
-    return scan(out, d, chunk) if method == "scan" else sequential(out, d)
+    multiplies n x n matrices, the loop only vectors). The scan keeps [S, T/chunk, n, n] transfer matrices, so streams
+    are processed in groups that fit `mem_bytes` per buffer."""
+    S, Tm1, K = out.p_era.shape
+    n = K + N_TAIL
+    if method == "auto":                       # scan work ~ T n^3 (fp64 matmuls), loop work ~ T n^2 + T launches
+        method = "scan" if out.p_era.is_cuda and n <= 24 else "sequential"
+    if method != "scan":
+        return sequential(out, d)
+    per = -(-Tm1 // chunk) * n * n * 8
+    g = max(1, mem_bytes // per)
+    if g >= S:
+        return scan(out, d, chunk)
+    parts = [scan(_subset(out, slice(i, i + g)), d, chunk) for i in range(0, S, g)]
+    return torch.cat([p[0] for p in parts]), torch.cat([p[1] for p in parts])
+
+
+def _subset(out, sl):
+    from dataclasses import replace
+    return replace(out, p_era=out.p_era[sl], p_win=out.p_win[sl], p_ext=out.p_ext[sl], hard=out.hard[sl],
+                   events=out.events[sl], n_eras=out.n_eras[sl], births=out.births[sl])
 
 
 def scan(out, d, chunk=128):
