@@ -150,7 +150,8 @@ theorem theta_bounds {b : ℝ} (hb : 0 < b) {k : ℕ} (hk : 1 ≤ k) :
   have hlf : log (((m + 1).factorial : ℕ) : ℝ) = log ((m + 1 : ℕ) : ℝ) + log (m.factorial : ℝ) := by
     rw [hfac, log_mul hk0.ne' hfpos.ne']
   have hb2 : 0 ≤ b ^ 2 := sq_nonneg b
-  have hS' : b ^ 2 * ∑ i in range m, 1 / ((i : ℝ) + 1) ^ 2 ≤ 2 * b ^ 2 := by nlinarith
+  have hS' : b ^ 2 * ∑ i in range m, 1 / ((i : ℝ) + 1) ^ 2 ≤ 2 * b ^ 2 := by
+    have := mul_le_mul_of_nonneg_left hS hb2; linarith
   have e1 : b * log ((m + 1 : ℕ) : ℝ) ≤ b * ∑ i in range m, 1 / ((i : ℝ) + 1) := mul_le_mul_of_nonneg_left hH1 hb.le
   have e2 : b * ∑ i in range m, 1 / ((i : ℝ) + 1) ≤ b * (1 + log ((m + 1 : ℕ) : ℝ)) :=
     mul_le_mul_of_nonneg_left hH2 hb.le
@@ -158,7 +159,7 @@ theorem theta_bounds {b : ℝ} (hb : 0 < b) {k : ℕ} (hk : 1 ≤ k) :
   have hexp : (((m + 1 : ℕ) : ℝ) + b - 1 / 2) * log ((m + 1 : ℕ) : ℝ) =
       ((m + 1 : ℕ) : ℝ) * log ((m + 1 : ℕ) : ℝ) + b * log ((m + 1 : ℕ) : ℝ) - log ((m + 1 : ℕ) : ℝ) / 2 := by ring
   rw [hexp]
-  constructor <;> nlinarith [hR.1, hR.2, hF.1, hF.2, hlf]
+  constructor <;> linarith [hR.1, hR.2, hF.1, hF.2, hlf]
 
 /-- Uniform bound on the remainder. -/
 noncomputable def kappa (b : ℝ) : ℝ := |log b| + 1 + b + 2 * b ^ 2
@@ -168,10 +169,10 @@ theorem abs_theta_le {b : ℝ} (hb : 0 < b) (k : ℕ) : |theta b k| ≤ kappa b 
   rcases Nat.eq_zero_or_pos k with h | h
   · subst h; rw [theta_zero, abs_zero]; positivity
   · have hθ := theta_bounds hb (k := k) h
-    have hπ : 0 ≤ log π := log_nonneg (by linarith [Real.pi_gt_three])
+    have hπ : 0 ≤ log π := log_nonneg (by linarith [Real.two_le_pi])
     have h2 : 0 ≤ log 2 := log_nonneg (by norm_num)
     rw [abs_le]
-    constructor <;> nlinarith [abs_nonneg (log b), le_abs_self (log b), neg_abs_le (log b), sq_nonneg b]
+    constructor <;> linarith [hθ.1, hθ.2, le_abs_self (log b), neg_abs_le (log b), sq_nonneg b]
 
 /-! ### Exact row decomposition -/
 
@@ -209,7 +210,7 @@ theorem maxll_eq (c : X → ℕ) : maxll c = ∑ x, (c x : ℝ) * log ((c x : �
   rcases Nat.eq_zero_or_pos (c x) with h | h
   · simp [h]
   · have hn : (0 : ℝ) < ∑ y, (c y : ℝ) :=
-      lt_of_lt_of_le (by exact_mod_cast h) (single_le_sum (f := fun y => (c y : ℝ)) (fun y _ => by positivity)
+      lt_of_lt_of_le (show (0 : ℝ) < (c x : ℝ) by exact_mod_cast h) (single_le_sum (f := fun y => (c y : ℝ)) (fun y _ => by positivity)
         (mem_univ x))
     rw [log_div (by positivity) hn.ne']
     ring
@@ -221,7 +222,7 @@ theorem abs_bigTheta_le {a : ℝ} (ha : 0 < a) [Nonempty X] (c : X → ℕ) :
   have h1 : |∑ x, theta a (c x)| ≤ Fintype.card X * kappa a := by
     calc |∑ x, theta a (c x)| ≤ ∑ x, |theta a (c x)| := abs_sum_le_sum_abs _ _
       _ ≤ ∑ _x : X, kappa a := sum_le_sum fun x _ => abs_theta_le ha _
-      _ = Fintype.card X * kappa a := by simp
+      _ = Fintype.card X * kappa a := by rw [sum_const, card_univ, nsmul_eq_mul]
   have h2 := abs_theta_le (b := Fintype.card X * a) (by positivity) (rowSum c)
   calc |∑ x, theta a (c x) - theta (Fintype.card X * a) (rowSum c)|
       ≤ |∑ x, theta a (c x)| + |theta (Fintype.card X * a) (rowSum c)| := abs_sub _ _
@@ -249,16 +250,19 @@ theorem gibbs_row (c : X → ℕ) (m : X → ℝ) (hm0 : ∀ x, 0 ≤ m x) (hmpo
       have hl := log_le_sub_one_of_pos (show 0 < rowSum c * m x / c x by positivity)
       have e : log ((c x : ℝ) / rowSum c) - log (m x) = - log (rowSum c * m x / c x) := by
         rw [log_div hc.ne' hn.ne', log_div (by positivity) hc.ne', log_mul hn.ne' hmx.ne']; ring
-      have : (c x : ℝ) * (rowSum c * m x / c x - 1) = rowSum c * m x - c x := by field_simp
-      nlinarith
+      have : (c x : ℝ) * (rowSum c * m x / c x - 1) = rowSum c * m x - c x := by field_simp; ring
+      have h3 : (c x : ℝ) * log ((c x : ℝ) / rowSum c) - (c x : ℝ) * log (m x) =
+          -((c x : ℝ) * log (rowSum c * m x / c x)) := by rw [← mul_sub, e]; ring
+      have h4 := mul_le_mul_of_nonneg_left hl hc.le
+      linarith
   have hsum := sum_le_sum fun x (_ : x ∈ univ) => key x
   rw [sum_add_distrib, sum_sub_distrib, ← mul_sum, ← rowSum_cast] at hsum
-  have : (rowSum c : ℝ) - rowSum c * ∑ x, m x ≥ 0 := by nlinarith
+  have : (rowSum c : ℝ) - rowSum c * ∑ x, m x ≥ 0 := by
+    have := mul_le_mul_of_nonneg_left hm1 hn0; linarith
   linarith
 
 theorem div_row_nonneg (c d : X → ℕ) : 0 ≤ maxll c + maxll d - maxll (c + d) := by
   set N : ℝ := (rowSum (c + d) : ℝ)
-  have hN : N = (rowSum c : ℝ) + rowSum d := by simp [N, rowSum, sum_add_distrib]
   let m : X → ℝ := fun x => ((c + d) x : ℝ) / N
   have hm0 : ∀ x, 0 ≤ m x := fun x => div_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _)
   have hm1 : ∑ x, m x ≤ 1 := by
@@ -292,8 +296,8 @@ theorem log_ml_eq {a : ℝ} (ha : 0 < a) [Nonempty X] (D : R → X → ℕ) : lo
     (rise_pos (by positivity) _)).ne')]
   apply sum_congr rfl
   intro r _
-  have h0 : rowSum ((0 : R → X → ℕ) r) = 0 := by simp [rowSum]
-  simp only [Pi.zero_apply, Nat.cast_zero, add_zero, h0]
+  have h0 : rowSum (0 : X → ℕ) = 0 := by simp [rowSum]
+  simp only [Pi.zero_apply, h0, Nat.cast_zero, add_zero]
   rw [log_div (prod_pos fun x _ => rise_pos ha _).ne' (rise_pos (by positivity) _).ne',
     log_prod _ _ (fun x _ => (rise_pos ha _).ne')]
 
@@ -329,8 +333,7 @@ theorem log_bf_sandwich {a : ℝ} (ha : 0 < a) [Nonempty X] (C D : R → X → �
     intro r _
     ring
   rw [hE]
-  have hV : (0 : ℝ) < Fintype.card X := Nat.cast_pos.mpr Fintype.card_pos
-  set B := (Fintype.card X : ℝ) * kappa a + kappa (Fintype.card X * a)
+  set B := (Fintype.card X : ℝ) * kappa a + kappa (Fintype.card X * a) with hB
   calc |∑ r, (bigTheta a ((C + D) r) - bigTheta a (C r) - bigTheta a (D r))|
       ≤ ∑ r, |bigTheta a ((C + D) r) - bigTheta a (C r) - bigTheta a (D r)| := abs_sum_le_sum_abs _ _
     _ ≤ ∑ _r : R, 3 * B := by
@@ -343,8 +346,8 @@ theorem log_bf_sandwich {a : ℝ} (ha : 0 < a) [Nonempty X] (C D : R → X → �
             ≤ |bigTheta a ((C + D) r) - bigTheta a (C r)| + |bigTheta a (D r)| := abs_sub _ _
           _ ≤ |bigTheta a ((C + D) r)| + |bigTheta a (C r)| + |bigTheta a (D r)| := by
               linarith [abs_sub (bigTheta a ((C + D) r)) (bigTheta a (C r))]
-          _ ≤ 3 * B := by linarith
-    _ = sandwichK a R X := by simp [sandwichK, B]; ring
+          _ ≤ 3 * B := by rw [hB]; linarith
+    _ = sandwichK a R X := by rw [sum_const, card_univ, nsmul_eq_mul, hB, sandwichK]; ring
 
 /-- **No merge** when the divergence beats the Occam gain by the constant. -/
 theorem refuse_merge {a : ℝ} (ha : 0 < a) [Nonempty X] (C D : R → X → ℕ)
@@ -367,7 +370,7 @@ variable (a : ℝ) (c d : X → ℕ) (hc : ∀ x, 0 < c x) (hd : ∀ x, 0 < d x)
 theorem rowSum_pos_of (e : X → ℕ) (he : ∀ x, 0 < e x) [Nonempty X] : (0 : ℝ) < rowSum e := by
   rw [rowSum_cast]
   obtain ⟨x⟩ := ‹Nonempty X›
-  exact lt_of_lt_of_le (by exact_mod_cast he x) (single_le_sum (f := fun y => (e y : ℝ)) (fun y _ => by positivity)
+  exact lt_of_lt_of_le (show (0 : ℝ) < (e x : ℝ) by exact_mod_cast he x) (single_le_sum (f := fun y => (e y : ℝ)) (fun y _ => by positivity)
     (mem_univ x))
 
 theorem proportional_logs [Nonempty X] (x : X) :
@@ -379,9 +382,9 @@ theorem proportional_logs [Nonempty X] (x : X) :
   have hdx : (0 : ℝ) < d x := by exact_mod_cast hd x
   have hN : (rowSum (c + d) : ℝ) = rowSum c + rowSum d := by simp [rowSum, sum_add_distrib]
   have h1 : (((c + d) x : ℕ) : ℝ) * rowSum c = (c x : ℝ) * rowSum (c + d) := by
-    rw [hN]; push_cast; nlinarith [hprop x]
+    rw [hN]; push_cast [Pi.add_apply]; linarith [hprop x]
   have h2 : (d x : ℝ) * rowSum c = (c x : ℝ) * rowSum d := by linarith [hprop x]
-  have hcd : (0 : ℝ) < (((c + d) x : ℕ) : ℝ) := by push_cast; linarith
+  have hcd : (0 : ℝ) < (((c + d) x : ℕ) : ℝ) := by push_cast [Pi.add_apply]; linarith
   have hNp : (0 : ℝ) < rowSum (c + d) := by rw [hN]; linarith
   constructor
   · have := congrArg log h1
@@ -408,8 +411,7 @@ theorem proportional_gain [Nonempty X] :
     rw [sum_congr rfl (fun x _ => (hl x).2)]
     simp only [add_sub_assoc, sum_add_distrib, sum_const, card_univ, nsmul_eq_mul]
   have e3 : ∑ x, log ((c x : ℝ) / rowSum c) = ∑ x, log (c x : ℝ) - Fintype.card X * log (rowSum c : ℝ) := by
-    rw [sum_congr rfl (fun x _ => log_div (hcx x).ne' hnc.ne')]
-    simp [sum_sub_distrib]
+    rw [sum_congr rfl (fun x _ => log_div (hcx x).ne' hnc.ne'), sum_sub_distrib, sum_const, card_univ, nsmul_eq_mul]
   unfold occam
   rw [e1, e2, e3]
   ring
@@ -432,7 +434,7 @@ theorem proportional_div [Nonempty X] : maxll c + maxll d - maxll (c + d) = 0 :=
     apply sum_congr rfl; intro x _; ring
   have e3 : ∑ x, (((c + d) x : ℕ) : ℝ) * log (c x : ℝ) =
       ∑ x, (c x : ℝ) * log (c x : ℝ) + ∑ x, (d x : ℝ) * log (c x : ℝ) := by
-    rw [← sum_add_distrib]; apply sum_congr rfl; intro x _; push_cast; ring
+    rw [← sum_add_distrib]; apply sum_congr rfl; intro x _; push_cast [Pi.add_apply]; ring
   rw [e1, e2, e3, hN]
   ring
 
