@@ -26,7 +26,8 @@ from sklearn.utils.validation import check_is_fitted, check_random_state, valida
 
 from . import bounds, conformal, differentiator as diff
 from .ctc import damped_loop
-from .eras import EraModel, era_chart
+from .eras import EraModel, SymEraModel, era_chart
+from .symmetry import ModeFeatures
 from .observer import born, parseval_frame
 from .router import ALONE, OOD, certified_topm, decide
 
@@ -91,6 +92,7 @@ class _Seg:
         self.rho = np.zeros((N, N), complex)
         self.counts = np.zeros((_S, _S))
         self.era = EraModel()
+        self.xera = None  # era != "phi": the L37 symmetric ridge on mode features (SymEraModel)
         self.law = _LawStats()
         self.gs, self.gn = 0.0, 0  # y=None: sum and count of the norm ratios |x_{t+1}| / |x_t| (additive)
 
@@ -171,7 +173,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
 
     def __init__(self, n_eras_max=64, d_chart=8, alpha=0.1, gamma=0.005, temp=1.0, eps=0.1, window=32,
                  random_state=None, n_bins=8, y_edges=None, ood="nearest_era", n_lags=1, law=None, damping=1.0, energy=False,
-                 holdout="interleaved"):
+                 holdout="interleaved", era="phi", era_lam=0.1, era_scale=None):
         self.n_eras_max = n_eras_max
         self.d_chart = d_chart
         self.alpha = alpha
@@ -187,6 +189,9 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         self.law = law
         self.damping = damping
         self.energy = energy
+        self.era = era  # "phi": EraModel on phi in the chart; "lin_vq" / "quad_vq": SymEraModel on mode features (L37)
+        self.era_lam = era_lam  # SymEraModel ridge, lam * n on the pre-scaled features
+        self.era_scale = era_scale  # feature scale; None: rms of the first chunk's newest block (like y_edges)
         self.holdout = holdout  # "interleaved" (every 5th window) or "trajectory" (L36 R1: only calibrate() feeds the pool)
 
     def __sklearn_tags__(self):
@@ -285,6 +290,14 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
 
     def _start(self, X, y):
         d = X.shape[1]
+        self._feat = None
+        if self.era not in ("phi", "lin_vq", "quad_vq"):
+            raise ValueError("era must be 'phi', 'lin_vq' or 'quad_vq'")
+        if self.era != "phi":
+            if y is not None or not hasattr(self.law, "modes"):
+                raise ValueError(f"era={self.era!r} needs y=None and a law with a symmetry action (law.modes())")
+            scale = self.era_scale or ModeFeatures.rms(self.law, X[:, :d // self.n_lags])
+            self._feat = ModeFeatures(self.law, self.n_lags, self.era == "quad_vq", scale)
         rng = check_random_state(self.random_state)
         self._init_frame(d, rng)
         if self.y_edges is not None:
@@ -356,7 +369,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         else:
             seg.rho += psi.T @ psi.conj()
             seg.n += len(X)
-            seg.era.partial_fit(phi, Y, solve=False)  # _finalize's set_chart re-solves from these statistics
+            self._era_stats(seg, X, Y, phi)
             self._ratios(st, seg, X, Y)
             st.tt.add(X, Y, self._edges)
         if not flush:
@@ -395,10 +408,22 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         else:
             seg.rho += psi.T @ psi.conj()
             seg.n += len(X)
-            seg.era.partial_fit(phi, Y, solve=False)
+            self._era_stats(seg, X, Y, phi)
             self._ratios(st, seg, X, Y)
             seg.law.add(R, L)
             st.tt.add(X, Y, self._edges)
+
+    def _era_stats(self, seg, X, Y, phi):
+        """Add one training window to the era's statistics; _finalize re-solves from them (set_chart)."""
+        seg.era.partial_fit(phi, Y, solve=False)
+        if self._feat is not None:
+            if seg.xera is None:
+                seg.xera = SymEraModel(self.era_lam, self._feat.desc, self._feat.ydesc)
+            seg.xera.partial_fit(self._feat(X), Y, solve=False)
+
+    def _era_in(self, X, phi):
+        """The era models' input: phi, or the L37 mode features of the rows X."""
+        return phi if getattr(self, "_feat", None) is None else self._feat(X)
 
     def _consume_law(self, st, X, Y, flush):
         psi, phi, sym = self._encode(X)
@@ -550,8 +575,9 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         pos = {k: i for i, k in enumerate(act)}
         lab = np.array([pos.get(l, -1) for l in st.cal_lab])
         P = np.zeros_like(st.cal_Y)
+        Z = self._era_in(st.cal_X, st.cal_phi)
         for i, em in enumerate(eras):
-            P[lab == i] = em.predict(st.cal_phi[lab == i])
+            P[lab == i] = em.predict(Z[lab == i])
         pooled = self._gamma(st.cal_Y[lab >= 0], P[lab >= 0]) if (lab >= 0).any() else 1.0
         for i in range(len(act)):
             gam[i] = self._gamma(st.cal_Y[lab == i], P[lab == i]) if (lab == i).sum() >= 10 else pooled
@@ -585,7 +611,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
             S = self._crossing(laws[act[0]], laws[k])
             B = era_chart(s.rho / s.n, d_c).conj().T @ S  # z = V^H S psi, a z = B phi
             M = np.block([[B.real, -B.imag], [B.imag, B.real]])
-            em = copy.copy(s.era)  # set_chart rebinds chart/W_/b_ and only reads the (never mutated in place) statistics
+            em = copy.copy(s.era if s.xera is None else s.xera)  # set_chart rebinds chart/W_/b_ and only reads the (never mutated in place) statistics
             em.set_chart(M)
             eras.append(em)
         pos = {k: i for i, k in enumerate(act)}
@@ -696,7 +722,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         """Era k's JEPA prediction (through its chart and crossing operator) for the rows of X."""
         X = self._check(X)
         _, phi, _ = self._encode(X)
-        return self._out(X, self._dmp() * self._model["gam"][k] * self._model["eras"][k].predict(phi))
+        return self._out(X, self._dmp() * self._model["gam"][k] * self._model["eras"][k].predict(self._era_in(X, phi)))
 
     def _blend(self, eras, preds):
         """Weights over eras from the damped CTC loop on the agreement map; uniform if the loop refuses."""
@@ -725,6 +751,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         out = self._tt_pred(X) * (self._dmp() * m["gam_tt"])
         _, phi, _ = self._encode(X)
         nc = self._nc_scores(m["segs"], phi)
+        Z = self._era_in(X, phi)
         decs = self._route(X, nc)
         n_ood = sum(d.kind == OOD for d in decs)
         if n_ood:
@@ -743,7 +770,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
                 if not eras:
                     out[i] = 0.0
                     continue
-            preds = [self._dmp() * m["gam"][k] * m["eras"][k].predict(phi[i:i + 1])[0] for k in eras]
+            preds = [self._dmp() * m["gam"][k] * m["eras"][k].predict(Z[i:i + 1])[0] for k in eras]
             w = np.ones(1) if len(preds) == 1 else self._blend(eras, preds)
             out[i] = w @ np.stack(preds)
             grow[i], used[i] = w @ m["g"][list(eras)], True

@@ -39,7 +39,7 @@ PINS = dict(grid=32, kmax=4, dt=0.01, steps_per_snapshot=10, burnin=200, lam_sw=
 SMOKE = dict(PINS, n_traj=8, L=110, burnin=10, origins=(20, 30, 40, 50), train_steps=20, tune_steps=10, hidden=16)
 # Estimator pins, one place: the final values Builder-model freezes land here. `law="ns2d"` builds NS2DLaw from the bed's
 # grid, encoder and snapshot step (R = nu L + f from the lag stack); damping scales the increment (1.0 = undamped).
-FCPA_PINS = dict(damping=1.0, law="ns2d")
+FCPA_PINS = dict(damping=1.0, law="ns2d", era="phi", era_lam=0.1)
 SMOKE_SEEDS = (7001, 7002)  # never an eval seed: development runs stay off the eval beds
 FREEZE_FILES = ("FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md")
 
@@ -234,6 +234,10 @@ def fit_fcpa(XL, P, seed, pins=None, cal=None):
         raise ValueError(f"unknown law pin {pins['law']!r}")
     if lags:
         kw["n_lags"] = P["n_lags"]
+    if pins.get("era", "phi") != "phi":  # L37 era model; its feature scale is pinned from the Train rows, like the edges
+        from fcpa.symmetry import ModeFeatures
+        D = XL.shape[-1] // P["n_lags"]
+        kw.update(era=pins["era"], era_lam=pins["era_lam"], era_scale=ModeFeatures.rms(kw["law"], XL[..., :D].reshape(-1, D)))
     est = FCPARegressor(**kw)
     # end_trajectory's _finalize runs outside the estimator's single-BLAS guard; a BLAS thread pool there made the
     # fit ~12x slower on a busy machine (6 seed-3 trajectories: 41.8 s against 3.5 s), almost all of it in _shrink
@@ -304,6 +308,11 @@ def fcpa_train_macs(est, n_pairs, n_calls, w):
     sample = 2 * N * (D + 1) + bars.macs_complex((N + 1) * N) + D * D + p * D + n2 * n2 + n2 * p + p * p
     window = 3 * w * n2 * n2 + n2 ** 3 + bars.macs_solve(n2 + 1, p)
     final = E * (bars.macs_solve(2 * d_c + 1, p) + 10 * N ** 3 + 20 * N ** 3) + 400 * E * n2 * n2
+    feat = getattr(est, "_feat", None)
+    if feat is not None:  # L37 era: per-sample feature statistics, per-finalisation group average and solve
+        F = feat.n_features
+        sample += F * F + F * p
+        final += E * (4 * F * F + 4 * F * p + bars.macs_solve(F, p))
     return int(n_pairs * sample + (n_pairs // w) * window + n_calls * final)
 
 

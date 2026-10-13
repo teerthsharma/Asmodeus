@@ -137,3 +137,40 @@ class EraModel:
         if self.n_ == 0:
             raise RuntimeError("EraModel is not fitted")
         return (np.asarray(Z, float) @ self._P.T) @ self.W_ + self.b_
+
+
+class SymEraModel(EraModel):
+    """L37 era model: ridge on fixed, pre-scaled features Z of the state (symmetry.ModeFeatures), restricted to
+    the maps that commute with the bed's symmetry group (V_Q).
+
+    The statistics are those of the data as seen, Chan-merged, so partial_fit equals fit (L27'). The solve reads
+    their group average (symmetry.average), which is exactly the statistics of the data augmented by every group
+    image weighted 1/|G|; the ridge on it lands in V_Q (L37 Q2). The penalty is lam * n on every feature but the
+    intercept (a fixed relative shrinkage at any era size, the features being pre-scaled). No rank guard and no
+    chart: lam is a pin and the features are fixed."""
+
+    def __init__(self, lam, zdesc, ydesc):
+        super().__init__(lam=lam, guard=False)
+        self.zdesc, self.ydesc = zdesc, ydesc
+
+    def set_chart(self, chart):
+        return self._solve()
+
+    def _solve(self):
+        from .symmetry import average, average_vec
+        n, mu, mu1 = self.n_, self.mu_, self.mu1_
+        ms, ms1 = average_vec(mu, self.zdesc), average_vec(mu1, self.ydesc)
+        G = average(self.M_ + n * np.outer(mu, mu), self.zdesc, self.zdesc) - n * np.outer(ms, ms)
+        C = average(self.C_ + n * np.outer(mu, mu1), self.zdesc, self.ydesc) - n * np.outer(ms, ms1)
+        A = G + self.lam * n * np.eye(len(G))
+        try:
+            W = np.linalg.solve(A, C)
+        except np.linalg.LinAlgError:
+            W = np.linalg.lstsq(A, C, rcond=None)[0]
+        self.W_, self.b_, self.lam_eff_, self._P, self.collapsed_ = W, ms1 - W.T @ ms, self.lam, None, False
+        return self
+
+    def predict(self, Z):
+        if self.n_ == 0:
+            raise RuntimeError("EraModel is not fitted")
+        return np.asarray(Z, float) @ self.W_ + self.b_
