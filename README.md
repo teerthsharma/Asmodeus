@@ -3,6 +3,8 @@
 <p align="center"><b>A time traveller on a chronal fluid.</b><br/>
 A softmax decider that answers alone, and goes back to an era when it needs that era's knowledge.</p>
 
+<p align="center"><a href="https://teerth.blog/asmodeus"><b>Read the essay at teerth.blog/asmodeus</b></a> &nbsp;·&nbsp; <a href="https://blog.teerth.dev/asmodeus/">project page</a></p>
+
 <p align="center"><i>Asmodeus, king of demons, commands a legion. None of them is anywhere until it is called by name.<br/>
 Called, one appears, does its work in its own corner of time, and is gone.</i></p>
 
