@@ -73,7 +73,8 @@ def test_no_ai_attribution_in_files():
 # is a trailer naming the human owner (teerthsharma). Exempted by SHA on the owner's decision; history is not
 # rewritten.
 ATTRIB_ALLOW = {"c1e3d9f5e69c80bf35b03eaad297407499c8b49b", "78970f8308d460584964c33fabaa4967403f5139",
-                "c9633bd8071fb1a4615103ea50516ace6c558683"}
+                "c9633bd8071fb1a4615103ea50516ace6c558683",
+                "9ccbaad45b7b1537390c1af6dfa84bff1a19c89c"}  # #27, already on main; history is not rewritten
 
 
 def test_no_ai_attribution_in_commits():
