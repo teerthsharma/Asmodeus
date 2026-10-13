@@ -19,6 +19,33 @@ class NS2DLaw:
         self.ky = np.arange(kmax + 1)
         self.D = 2 * len(self.kx) * len(self.ky)
 
+    def group(self, m=17):
+        """The bed's exact symmetries (L37 S0-S2) as orthogonal matrices on the D stored coordinates: T_s C^e,
+        s = 2 pi j / m, e in {0, 1}; T_s: a_k -> e^{-i kx s} a_k (an x-shift), C: a -> conj a (rotation by pi).
+        m = 17 > 12 makes the averaged ridge O(2)-equivariant, not only Z_m (L37 Q2)."""
+        kx = np.where(self.kx > self.n // 2, self.kx - self.n, self.kx)
+        kxf = np.repeat(kx, len(self.ky))
+        h, out = self.D // 2, []
+        for j in range(m):
+            c, s = np.cos(kxf * 2 * np.pi * j / m), np.sin(kxf * 2 * np.pi * j / m)
+            for e in (0, 1):
+                g = np.zeros((self.D, self.D))
+                sg = -1.0 if e else 1.0  # C flips Im before the shift
+                i = np.arange(h)
+                g[i, i], g[i, h + i] = c, s * sg  # Re' = c Re + s Im
+                g[h + i, i], g[h + i, h + i] = -s, c * sg  # Im' = -s Re + c Im
+                out.append(g)
+        return out
+
+    def modes(self):
+        """The x-shift charge of every stored coordinate (signed kx: T_s multiplies mode k by e^{-i kx s}), its part
+        (0 = Re, 1 = Im; C flips Im), and the stored indices of the 40 independent complex modes (Re part; Im is
+        + D/2): (0, 0) is zero and ky = 0, kx < 0 are the conjugates of ky = 0, kx > 0."""
+        kx = np.where(self.kx > self.n // 2, self.kx - self.n, self.kx)
+        kxf, kyf = np.repeat(kx, len(self.ky)), np.tile(self.ky, len(self.kx))
+        h = self.D // 2
+        return np.r_[kxf, kxf], np.r_[np.zeros(h, int), np.ones(h, int)], np.flatnonzero(~((kyf == 0) & (kxf <= 0)))
+
     def _decode(self, x):
         h = self.D // 2
         z = (x[:, :h] + 1j * x[:, h:]).reshape(len(x), len(self.kx), len(self.ky))

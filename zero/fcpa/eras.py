@@ -137,3 +137,98 @@ class EraModel:
         if self.n_ == 0:
             raise RuntimeError("EraModel is not fitted")
         return (np.asarray(Z, float) @ self._P.T) @ self.W_ + self.b_
+
+
+class SymEraModel(EraModel):
+    """L37 era model: ridge on fixed, pre-scaled features Z of the state (symmetry.ModeFeatures), restricted to
+    the maps that commute with the bed's symmetry group (V_Q).
+
+    The statistics are those of the data as seen, Chan-merged, so partial_fit equals fit (L27'). The solve reads
+    their group average (symmetry.average), which is exactly the statistics of the data augmented by every group
+    image weighted 1/|G|; the ridge on it lands in V_Q (L37 Q2). The penalty is lam * n |W - W0|^2 on every feature
+    but the intercept (a fixed relative shrinkage at any era size, the features being pre-scaled), toward W0 = 0, or
+    toward the solution of `prior` (the pooled model of all eras, `pooled`) with strength `pool` instead of lam;
+    pool = inf answers with the prior. The penalty is invariant, so W stays in V_Q. No rank guard and no chart:
+    lam and pool are pins and the features are fixed. The solve is lazy and cached on the statistics' state."""
+
+    def __init__(self, lam, zdesc, ydesc, prior=None, pool=None):
+        super().__init__(lam=lam, guard=False)
+        self.zdesc, self.ydesc, self.prior, self.pool = zdesc, ydesc, prior, pool
+
+    @classmethod
+    def pooled(cls, models, lam):
+        """One model on the union of the eras' statistics (exact Chan merge); merged and solved lazily."""
+        return _Pooled(cls, list(models), lam)
+
+    @classmethod
+    def _merge(cls, models, lam):
+        out = cls(lam, models[0].zdesc, models[0].ydesc)
+        for m in models:
+            if m.n_ == 0:
+                continue
+            if out.n_ == 0:
+                out.n_, out.mu_, out.mu1_, out.M_, out.C_, out.T_ = m.n_, m.mu_, m.mu1_, m.M_, m.C_, m.T_
+                continue
+            n = out.n_ + m.n_
+            d, d1, f = m.mu_ - out.mu_, m.mu1_ - out.mu1_, out.n_ * m.n_ / n
+            out.M_ = out.M_ + m.M_ + f * np.outer(d, d)
+            out.C_ = out.C_ + m.C_ + f * np.outer(d, d1)
+            out.T_ = out.T_ + m.T_ + f * np.outer(d1, d1)
+            out.mu_, out.mu1_, out.n_ = out.mu_ + d * m.n_ / n, out.mu1_ + d1 * m.n_ / n, n
+        return out
+
+    def partial_fit(self, Z, Z1, solve=True):
+        self._key = None
+        return super().partial_fit(Z, Z1, solve)
+
+    def set_chart(self, chart):
+        return self  # the solve is lazy: predict solves once per state (a 3400-wide solve per partial_fit is the cost)
+
+    def _state(self):
+        return (self.n_, self.pool, None if self.prior is None else (id(self.prior), self.prior.n_))
+
+    def _solve(self):
+        if getattr(self, "_key", None) == self._state():  # statistics only grow, so n_ identifies the state
+            return self
+        from .symmetry import average, average_vec
+        n, mu, mu1 = self.n_, self.mu_, self.mu1_
+        ms, ms1 = average_vec(mu, self.zdesc), average_vec(mu1, self.ydesc)
+        if self.prior is not None and self.pool is not None and np.isinf(self.pool):
+            W = self.prior._solve().W_
+        else:
+            G = average(self.M_ + n * np.outer(mu, mu), self.zdesc, self.zdesc) - n * np.outer(ms, ms)
+            C = average(self.C_ + n * np.outer(mu, mu1), self.zdesc, self.ydesc) - n * np.outer(ms, ms1)
+            lam = self.lam
+            if self.prior is not None and self.pool is not None:
+                lam = self.pool
+                C = C + lam * n * self.prior._solve().W_
+            A = G + lam * n * np.eye(len(G))
+            try:
+                W = np.linalg.solve(A, C)
+            except np.linalg.LinAlgError:
+                W = np.linalg.lstsq(A, C, rcond=None)[0]
+        # the intercept is the era's own: b = mean target - W^T mean feature (group-averaged)
+        self.W_, self.b_, self.lam_eff_, self._P, self.collapsed_ = W, ms1 - W.T @ ms, self.lam, None, False
+        self._key = self._state()
+        return self
+
+    def predict(self, Z):
+        if self.n_ == 0:
+            raise RuntimeError("EraModel is not fitted")
+        self._solve()
+        return np.asarray(Z, float) @ self.W_ + self.b_
+
+
+class _Pooled:
+    """SymEraModel.pooled: the merge of the eras' statistics is deferred to the first solve (a fit finalises after
+    every chunk, and nothing reads the pooled map until a prediction)."""
+
+    def __init__(self, cls, models, lam):
+        self._args, self._model = (cls, models, lam), None
+        self.n_ = sum(m.n_ for m in models)
+
+    def _solve(self):
+        if self._model is None:
+            cls, models, lam = self._args
+            self._model = cls._merge(models, lam)._solve()
+        return self._model
