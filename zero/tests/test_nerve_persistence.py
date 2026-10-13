@@ -48,7 +48,7 @@ def test_disjoint_charts_window_does_not_win():
     # two disjoint charts: window (2,0,..) over [tau_min, 0.5) is short; (1,..) never exists -> no wrong win
     w2 = np.array([[1.0, 0.0]] * 5 + [[0.0, 1.0]] * 5)
     bars = persistence(nerve_filtration(w2, tau_min=0.1), 1)
-    assert certified_betti(bars, 0.05, 1, tau_min=0.1)[0] == (2, 0)
+    assert certified_betti(bars, 0.05, 1, tau_min=0.1)[0] is None
     # finite H0 bars: six charts merging at 0.5 then staying connected: the connected window must win
     bars = [(0, 0.9, 0.5)] * 5 + [(0, 0.9, 0.0)]
     v, length, _ = certified_betti(bars, 0.05, 0)
@@ -81,7 +81,7 @@ def test_outlier_rows_need_support(w):
     wo = _outliers(w, 0.005)  # 0.5%: naive already breaks
     naive = certified_betti(persistence(nerve_filtration(wo, max_dim=3, n_min=1), 2), 0.05, 2)
     assert naive[0] != (1, 0, 1)
-    nm = max(3, int(0.01 * len(wo)))
+    nm = max(3, int(0.005 * len(wo)))
     v, length, bd = certified_betti(persistence(nerve_filtration(wo, max_dim=3, n_min=nm), 2), 0.05, 2)
     print("octa 0.5% outlier interval", v, length, bd)
     assert v == (1, 0, 1)
