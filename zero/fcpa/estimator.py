@@ -173,7 +173,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
 
     def __init__(self, n_eras_max=64, d_chart=8, alpha=0.1, gamma=0.005, temp=1.0, eps=0.1, window=32,
                  random_state=None, n_bins=8, y_edges=None, ood="nearest_era", n_lags=1, law=None, damping=1.0, energy=False,
-                 holdout="interleaved", era="phi", era_lam=0.1, era_scale=None):
+                 holdout="interleaved", era="phi", era_lam=0.1, era_pool=None, era_scale=None):
         self.n_eras_max = n_eras_max
         self.d_chart = d_chart
         self.alpha = alpha
@@ -191,6 +191,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         self.energy = energy
         self.era = era  # "phi": EraModel on phi in the chart; "lin_vq" / "quad_vq": SymEraModel on mode features (L37)
         self.era_lam = era_lam  # SymEraModel ridge, lam * n on the pre-scaled features
+        self.era_pool = era_pool  # None: each era alone; a float: ridge toward the pooled model of all eras (inf: pooled)
         self.era_scale = era_scale  # feature scale; None: rms of the first chunk's newest block (like y_edges)
         self.holdout = holdout  # "interleaved" (every 5th window) or "trajectory" (L36 R1: only calibrate() feeds the pool)
 
@@ -421,6 +422,14 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
                 seg.xera = SymEraModel(self.era_lam, self._feat.desc, self._feat.ydesc)
             seg.xera.partial_fit(self._feat(X), Y, solve=False)
 
+    def _xera_model(self, xera, pooled):
+        """The answering L37 era: the era's own statistics; with era_pool, shrunk toward the pooled model."""
+        if pooled is None:
+            return xera
+        em = copy.copy(xera)  # shares the statistics; the solve (and its cache) lands on the copy
+        em.prior, em.pool = pooled, float(self.era_pool)
+        return em
+
     def _era_in(self, X, phi):
         """The era models' input: phi, or the L37 mode features of the rows X."""
         return phi if getattr(self, "_feat", None) is None else self._feat(X)
@@ -606,12 +615,14 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         laws = [diff.Law(P=(s.counts + 1) / (s.counts + 1).sum(1, keepdims=True), nu=0.0, f=np.zeros(2))
                 for s in st.segs]
         eras = []
+        xs = [s.xera for s in st.segs if s.xera is not None and s.xera.n_]
+        pooled = SymEraModel.pooled(xs, self.era_lam) if xs and self.era_pool is not None else None
         for k in act:
             s = st.segs[k]
             S = self._crossing(laws[act[0]], laws[k])
             B = era_chart(s.rho / s.n, d_c).conj().T @ S  # z = V^H S psi, a z = B phi
             M = np.block([[B.real, -B.imag], [B.imag, B.real]])
-            em = copy.copy(s.era if s.xera is None else s.xera)  # set_chart rebinds chart/W_/b_ and only reads the (never mutated in place) statistics
+            em = copy.copy(s.era) if s.xera is None else self._xera_model(s.xera, pooled)  # set_chart rebinds chart/W_/b_ and only reads the (never mutated in place) statistics
             em.set_chart(M)
             eras.append(em)
         pos = {k: i for i, k in enumerate(act)}

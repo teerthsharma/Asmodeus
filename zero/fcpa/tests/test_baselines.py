@@ -114,10 +114,12 @@ def test_baselines_freeze_gate_accepts_the_frozen_files():
     assert "PREREG_AMENDMENT_11a.md" in (ROOT / "docs" / "specs" / "FREEZE2.md").read_text()
     assert "PREREG_AMENDMENT_11b.md" in (ROOT / "docs" / "specs" / "FREEZE3.md").read_text()  # lag stack, step edges
     assert "PREREG_AMENDMENT_11c.md" in (ROOT / "docs" / "specs" / "FREEZE4.md").read_text()  # calibration by Cal trajectory
+    assert "PREREG_AMENDMENT_11d.md" in (ROOT / "docs" / "specs" / "FREEZE5.md").read_text()  # L37 era model
 
 
 @pytest.mark.parametrize("victim", ["PREREG_AMENDMENT_11_DRAFT.md", "2026-10-11-fcpa-design.md", "PREREG_AMENDMENT_11a.md",
-                                    "PREREG_AMENDMENT_11b.md", "PREREG_AMENDMENT_11c.md"])
+                                    "PREREG_AMENDMENT_11b.md", "PREREG_AMENDMENT_11c.md",
+                                    "PREREG_AMENDMENT_11d.md"])
 def test_baselines_freeze_gate_refuses_a_changed_spec(tmp_path, victim):
     from fcpa import run_primary
 
@@ -347,6 +349,7 @@ def test_baselines_fit_fcpa_uses_step_edges_and_the_lag_stack(monkeypatch):
     monkeypatch.setattr(rp, "end_trajectory", lambda est: None)  # the stub has no window buffer
     X = np.random.default_rng(0).standard_normal((3, 30, 4))
     XL = rp.lag_stack(X, 2)
+    monkeypatch.setitem(rp.FCPA_PINS, "era", "phi")  # toy D = 4 states: the L37 era needs the bed's 90 coordinates
     rp.fit_fcpa(XL, dict(rp.PINS, n_lags=2), 0)
     np.testing.assert_array_equal(seen["y_edges"], real.make_step_edges(XL, n_lags=2))  # increments, not states
     assert seen["y_edges"].shape[0] == 4  # newest block only: D = 4 outputs
@@ -376,6 +379,7 @@ def test_baselines_fit_fcpa_omits_n_lags_when_the_estimator_has_none(monkeypatch
 
     monkeypatch.setattr(estimator, "FCPARegressor", Stub)
     monkeypatch.setattr(rp, "end_trajectory", lambda est: None)  # the stub has no window buffer
+    monkeypatch.setitem(rp.FCPA_PINS, "era", "phi")  # toy D = 4 states: the L37 era needs the bed's 90 coordinates
     rp.fit_fcpa(rp.lag_stack(np.zeros((2, 30, 4)) + np.arange(30)[None, :, None], 2), dict(rp.PINS, n_lags=2), 0)
     assert "n_lags" not in seen and "y_edges" in seen  # stacked rows are still passed; only the kwarg is withheld
 
@@ -424,6 +428,7 @@ def test_baselines_fcpa_pins_dict_is_the_one_place_the_estimator_pins_live(smoke
     monkeypatch.setitem(rp.FCPA_PINS, "damping", 0.7)
     assert rp.fit_fcpa(XL[:2], rp.SMOKE, 7001).damping == 0.7
     monkeypatch.setitem(rp.FCPA_PINS, "law", None)
+    monkeypatch.setitem(rp.FCPA_PINS, "era", "phi")  # the L37 era needs the law's symmetry action
     assert rp.fit_fcpa(XL[:2], rp.SMOKE, 7001).law is None
 
 
@@ -440,7 +445,7 @@ def _boundary_spy(monkeypatch, XL, law):
         return orig(self, st, X, Y, flush)
 
     monkeypatch.setattr(FCPARegressor, "_consume", spy)
-    pins = dict(rp.FCPA_PINS, **({} if law else {"law": None}))
+    pins = dict(rp.FCPA_PINS, **({} if law else {"law": None, "era": "phi"}))
     rp.fit_fcpa(XL, rp.SMOKE, 7001, pins=pins)
     return wins
 
@@ -523,11 +528,12 @@ def test_baselines_smoke_run_end_to_end(tmp_path):
 
     t0 = time.time()
     res = rp.main(["--smoke", "--out", str(tmp_path)])
-    assert time.time() - t0 < 120
+    # 11d: the L37 era raises FCPA's training MACs, and the global baseline's width (equal-FLOPs) grows with them
+    assert time.time() - t0 < 360
     out = json.loads((tmp_path / "results.json").read_text())
     assert (tmp_path / "report.md").exists()
     assert out["smoke"] is True and out["freeze_verified"] is True
-    assert out["freeze_files"] == ["FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md"] and out["c2_mode"] == "prime" and out["diagnostic"] is False
+    assert out["freeze_files"] == ["FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md", "FREEZE5.md"] and out["c2_mode"] == "prime" and out["diagnostic"] is False
     assert out["bars"]["C2"]["status"] == "REPORTED"
     assert out["verdict"] in {"PASS", "FAIL", "VOID", "NOT RUN"}
     assert out["bars"]["P4"]["status"] == "VOID"  # smoke stream is far below T = 950 steps

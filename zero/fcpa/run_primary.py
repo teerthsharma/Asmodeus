@@ -39,9 +39,11 @@ PINS = dict(grid=32, kmax=4, dt=0.01, steps_per_snapshot=10, burnin=200, lam_sw=
 SMOKE = dict(PINS, n_traj=8, L=110, burnin=10, origins=(20, 30, 40, 50), train_steps=20, tune_steps=10, hidden=16)
 # Estimator pins, one place: the final values Builder-model freezes land here. `law="ns2d"` builds NS2DLaw from the bed's
 # grid, encoder and snapshot step (R = nu L + f from the lag stack); damping scales the increment (1.0 = undamped).
-FCPA_PINS = dict(damping=1.0, law="ns2d", era="phi", era_lam=0.1)
+# Amendment 11d (L37): one shared O(2)-equivariant quadratic ridge answers for every era (era_pool = inf), each era
+# keeping its own offset and its own dissipation rate (energy = True projects the step onto |x_{t+1}| = g_k |x_t|).
+FCPA_PINS = dict(damping=1.0, law="ns2d", era="quad_vq", era_lam=0.1, era_pool=float("inf"), energy=True)
 SMOKE_SEEDS = (7001, 7002)  # never an eval seed: development runs stay off the eval beds
-FREEZE_FILES = ("FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md")
+FREEZE_FILES = ("FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md", "FREEZE5.md")
 
 
 class FreezeError(RuntimeError):
@@ -49,7 +51,7 @@ class FreezeError(RuntimeError):
 
 
 def verify_freeze(specs=SPECS):
-    """Every `- <file> sha256 <hex>` line of FREEZE.md to FREEZE4.md must match the file on disk; otherwise refuse."""
+    """Every `- <file> sha256 <hex>` line of FREEZE.md to FREEZE5.md must match the file on disk; otherwise refuse."""
     for freeze in FREEZE_FILES:
         f = Path(specs) / freeze
         if not f.exists():
@@ -226,7 +228,8 @@ def fit_fcpa(XL, P, seed, pins=None, cal=None):
     lags = "n_lags" in FCPARegressor().get_params()
     edges = FCPARegressor.make_step_edges(XL, n_lags=P["n_lags"]) if lags else FCPARegressor.make_step_edges(XL)
     kw = dict(n_eras_max=P["n_eras_max"], d_chart=P["d_chart"], alpha=bars.ALPHA, gamma=bars.GAMMA, window=P["w"],
-              random_state=seed, y_edges=edges, damping=pins["damping"],
+              random_state=seed, y_edges=edges, damping=pins["damping"], energy=pins.get("energy", False),
+              ood=pins.get("ood", "nearest_era"),
               holdout="interleaved" if cal is None else "trajectory")
     if pins["law"] == "ns2d":
         kw["law"] = NS2DLaw(n=P["grid"], kmax=P["kmax"], dt=P["dt"] * P["steps_per_snapshot"])
@@ -234,10 +237,13 @@ def fit_fcpa(XL, P, seed, pins=None, cal=None):
         raise ValueError(f"unknown law pin {pins['law']!r}")
     if lags:
         kw["n_lags"] = P["n_lags"]
-    if pins.get("era", "phi") != "phi":  # L37 era model; its feature scale is pinned from the Train rows, like the edges
+    if pins.get("era", "phi") != "phi":  # L37 era model (needs the law's symmetry action)
+        if "law" not in kw:
+            raise ValueError("an L37 era pin needs law='ns2d'")
+        # the feature scale is pinned from the Train rows, like the edges
         from fcpa.symmetry import ModeFeatures
         D = XL.shape[-1] // P["n_lags"]
-        kw.update(era=pins["era"], era_lam=pins["era_lam"], era_scale=ModeFeatures.rms(kw["law"], XL[..., :D].reshape(-1, D)))
+        kw.update(era=pins["era"], era_lam=pins["era_lam"], era_pool=pins.get("era_pool"), era_scale=ModeFeatures.rms(kw["law"], XL[..., :D].reshape(-1, D)))
     est = FCPARegressor(**kw)
     # end_trajectory's _finalize runs outside the estimator's single-BLAS guard; a BLAS thread pool there made the
     # fit ~12x slower on a busy machine (6 seed-3 trajectories: 41.8 s against 3.5 s), almost all of it in _shrink
@@ -289,9 +295,15 @@ def fcpa_inference_macs(est, sizes):
     tt = m["tt"]
     p, B, _ = tt.sumx.shape
     E = len(m["eras"])
-    rows = m["eras"][0].chart.shape[0] if E else 0
+    feat = getattr(est, "_feat", None)
     fixed = 2 * N * (D + 1) + bars.macs_complex((N + 1) * N) + p * D * B + 2 * p * B + E * ((2 * N) ** 2 + 2 * N + 1)
-    per_era = rows * 2 * N + rows * p + p
+    if feat is not None:  # L37 era: the quadratic features once per row, then one F x p map per consulted era
+        F = feat.n_features
+        fixed += F + (2 * p if est.energy else 0)
+        per_era = F * p + p
+    else:
+        rows = m["eras"][0].chart.shape[0] if E else 0
+        per_era = rows * 2 * N + rows * p + p
     iters = min(500, int(np.ceil(np.log(1e-9) / np.log(1 - est.eps))))
     blend = np.where(sizes >= 2, iters * (2 * sizes * p + sizes), 0)
     return float(fixed + per_era * sizes.mean() + blend.mean())

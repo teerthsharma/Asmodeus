@@ -19,7 +19,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fcpa import bars, run_primary as rp  # noqa: E402
 
-BASE = dict(rp.FCPA_PINS, era="phi")
+BASE = dict(damping=1.0, law="ns2d", era="phi", era_lam=0.1)  # the pins before Amendment 11d
 CANDIDATES = {
     "phi": dict(BASE),
     "lin_vq": dict(BASE, era="lin_vq", era_lam=1e-3),
@@ -27,6 +27,20 @@ CANDIDATES = {
     "quad_vq_d0.9": dict(BASE, era="quad_vq", era_lam=0.1, damping=0.9),
     "quad_vq_l0.03": dict(BASE, era="quad_vq", era_lam=0.03),
     "quad_vq_l0.3": dict(BASE, era="quad_vq", era_lam=0.3),
+    "quad_vq_pool1": dict(BASE, era="quad_vq", era_lam=0.1, era_pool=1.0),
+    "quad_vq_pool0.1": dict(BASE, era="quad_vq", era_lam=0.1, era_pool=0.1),
+    "quad_vq_shared": dict(BASE, era="quad_vq", era_lam=0.1, era_pool=float("inf")),
+    "quad_vq_oodtt": dict(BASE, era="quad_vq", era_lam=0.1, ood="tt"),
+    "quad_vq_shared_oodtt": dict(BASE, era="quad_vq", era_lam=0.1, era_pool=float("inf"), ood="tt"),
+    "phi_energy": dict(BASE, energy=True),
+    "lin_vq_energy": dict(BASE, era="lin_vq", era_lam=1e-3, energy=True),
+    "quad_vq_energy_d0.9": dict(BASE, era="quad_vq", era_lam=0.1, energy=True, damping=0.9),
+    "quad_vq_energy_l0.3": dict(BASE, era="quad_vq", era_lam=0.3, energy=True),
+    "quad_vq_shared_energy": dict(BASE, era="quad_vq", era_lam=0.1, era_pool=float("inf"), energy=True),
+    "quad_vq_pool1_energy": dict(BASE, era="quad_vq", era_lam=0.1, era_pool=1.0, energy=True),
+    "quad_vq_energy": dict(BASE, era="quad_vq", era_lam=0.1, energy=True),
+    "quad_vq_1era": dict(BASE, era="quad_vq", era_lam=0.1, n_eras_max=1),
+    "quad_vq_1era_l0.3": dict(BASE, era="quad_vq", era_lam=0.3, n_eras_max=1),
 }
 
 
@@ -45,11 +59,22 @@ def run_seed(seed, P, names, out, log=print):
     res = []
     for name in names:
         t0 = time.time()
-        est = rp.fit_fcpa(XL[tr], P, seed, pins=CANDIDATES[name], cal=XL[ca])
+        pins = dict(CANDIDATES[name])
+        Pc = dict(P, n_eras_max=pins.pop("n_eras_max", P["n_eras_max"]))
+        est = rp.fit_fcpa(XL[tr], Pc, seed, pins=pins, cal=XL[ca])
         bad = [0]
+        ref = float(np.linalg.norm(XL[tr].reshape(-1, nl * D), axis=1).max())
+
+        def step(rows):  # a diverged rollout (|row| > 1e3 x the largest Train row) answers non-finite: counted, error 1
+            ok = np.isfinite(rows).all(1) & (np.linalg.norm(rows, axis=1) < 1e3 * ref)
+            out = np.full((len(rows), D), np.nan)
+            if ok.any():
+                out[ok] = rp.first_block(est.predict(rows[ok]), D)
+            return out
+
         with warnings.catch_warnings(), np.errstate(all="ignore"):
             warnings.simplefilter("ignore")
-            e = rp.rollout_errors(lambda rows: rp.first_block(est.predict(rows), D), X[te], P, bad, nl)
+            e = rp.rollout_errors(step, X[te], P, bad, nl)
             f1 = float(bars.rel_err(rp.first_block(est.predict(xt), D), y).mean())
         r = dict(seed=seed, model=name, pins=CANDIDATES[name], e50=float(e.mean()), e50_pers=float(pers.mean()),
                  e50_vs_pers=float(e.mean() / pers.mean()), wins=float((e.mean(1) < pers.mean(1)).mean()),
