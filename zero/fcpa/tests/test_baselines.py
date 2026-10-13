@@ -113,10 +113,11 @@ def test_baselines_freeze_gate_accepts_the_frozen_files():
     assert (ROOT / "docs" / "specs" / "FREEZE2.md").exists()
     assert "PREREG_AMENDMENT_11a.md" in (ROOT / "docs" / "specs" / "FREEZE2.md").read_text()
     assert "PREREG_AMENDMENT_11b.md" in (ROOT / "docs" / "specs" / "FREEZE3.md").read_text()  # lag stack, step edges
+    assert "PREREG_AMENDMENT_11c.md" in (ROOT / "docs" / "specs" / "FREEZE4.md").read_text()  # calibration by Cal trajectory
 
 
 @pytest.mark.parametrize("victim", ["PREREG_AMENDMENT_11_DRAFT.md", "2026-10-11-fcpa-design.md", "PREREG_AMENDMENT_11a.md",
-                                    "PREREG_AMENDMENT_11b.md"])
+                                    "PREREG_AMENDMENT_11b.md", "PREREG_AMENDMENT_11c.md"])
 def test_baselines_freeze_gate_refuses_a_changed_spec(tmp_path, victim):
     from fcpa import run_primary
 
@@ -127,6 +128,18 @@ def test_baselines_freeze_gate_refuses_a_changed_spec(tmp_path, victim):
     f.write_bytes(f.read_bytes() + b"\nedited after the freeze\n")
     with pytest.raises(run_primary.FreezeError):
         run_primary.verify_freeze(specs)
+
+
+@pytest.mark.parametrize("eol", [b"\n", b"\r\n"])
+def test_baselines_freeze_gate_ignores_line_endings(tmp_path, eol):
+    """A pin taken on an autocrlf (Windows) checkout holds on an LF one and back: line endings are not content."""
+    from fcpa import run_primary
+
+    specs = tmp_path / "specs"
+    shutil.copytree(ROOT / "docs" / "specs", specs)
+    for f in specs.glob("*.md"):
+        f.write_bytes(f.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", eol))
+    assert run_primary.verify_freeze(specs) is True
 
 
 def test_baselines_freeze3_tampered_hash_makes_the_runner_refuse(tmp_path):
@@ -514,7 +527,7 @@ def test_baselines_smoke_run_end_to_end(tmp_path):
     out = json.loads((tmp_path / "results.json").read_text())
     assert (tmp_path / "report.md").exists()
     assert out["smoke"] is True and out["freeze_verified"] is True
-    assert out["freeze_files"] == ["FREEZE.md", "FREEZE2.md", "FREEZE3.md"] and out["c2_mode"] == "prime" and out["diagnostic"] is False
+    assert out["freeze_files"] == ["FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md"] and out["c2_mode"] == "prime" and out["diagnostic"] is False
     assert out["bars"]["C2"]["status"] == "REPORTED"
     assert out["verdict"] in {"PASS", "FAIL", "VOID", "NOT RUN"}
     assert out["bars"]["P4"]["status"] == "VOID"  # smoke stream is far below T = 950 steps

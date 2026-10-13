@@ -20,6 +20,7 @@ from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
+from threadpoolctl import threadpool_limits
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -40,7 +41,7 @@ SMOKE = dict(PINS, n_traj=8, L=110, burnin=10, origins=(20, 30, 40, 50), train_s
 # grid, encoder and snapshot step (R = nu L + f from the lag stack); damping scales the increment (1.0 = undamped).
 FCPA_PINS = dict(damping=1.0, law="ns2d")
 SMOKE_SEEDS = (7001, 7002)  # never an eval seed: development runs stay off the eval beds
-FREEZE_FILES = ("FREEZE.md", "FREEZE2.md", "FREEZE3.md")
+FREEZE_FILES = ("FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md")
 
 
 class FreezeError(RuntimeError):
@@ -48,7 +49,7 @@ class FreezeError(RuntimeError):
 
 
 def verify_freeze(specs=SPECS):
-    """Every `- <file> sha256 <hex>` line of FREEZE.md, FREEZE2.md and FREEZE3.md must match the file on disk; otherwise refuse."""
+    """Every `- <file> sha256 <hex>` line of FREEZE.md to FREEZE4.md must match the file on disk; otherwise refuse."""
     for freeze in FREEZE_FILES:
         f = Path(specs) / freeze
         if not f.exists():
@@ -57,8 +58,10 @@ def verify_freeze(specs=SPECS):
         if not pairs:
             raise FreezeError(f"{freeze} lists no hashes")
         for name, want in pairs:
-            got = hashlib.sha256((Path(specs) / name).read_bytes()).hexdigest()
-            if got != want:
+            # line endings are not content: a pin taken on a CRLF checkout must hold on an LF one and back
+            lf = (Path(specs) / name).read_bytes().replace(b"\r\n", b"\n")
+            got = hashlib.sha256(lf).hexdigest()
+            if want not in (got, hashlib.sha256(lf.replace(b"\n", b"\r\n")).hexdigest()):
                 raise FreezeError(f"{name} changed after the freeze: sha256 {got} != frozen {want}")
     return True
 
@@ -211,9 +214,11 @@ def end_trajectory(est):
     est._finalize()
 
 
-def fit_fcpa(XL, P, seed, pins=None):
+def fit_fcpa(XL, P, seed, pins=None, cal=None):
     """XL: lag-stacked Train trajectories (n, L, n_lags D). The estimator predicts increments (y = None), so the
-    TT bins are step edges of the stacked rows. Pins come from FCPA_PINS (law, damping); one chunk per trajectory."""
+    TT bins are step edges of the stacked rows. Pins come from FCPA_PINS (law, damping); one chunk per trajectory.
+    cal: lag-stacked Cal trajectories. Given, every Train window trains and the Cal trajectories alone calibrate
+    the conformal sets, ACI and the skill gate (Amendment 11c, L36 R1); None keeps the interleaved hold-out."""
     from fcpa.estimator import FCPARegressor
     from fcpa.laws import NS2DLaw
 
@@ -221,7 +226,8 @@ def fit_fcpa(XL, P, seed, pins=None):
     lags = "n_lags" in FCPARegressor().get_params()
     edges = FCPARegressor.make_step_edges(XL, n_lags=P["n_lags"]) if lags else FCPARegressor.make_step_edges(XL)
     kw = dict(n_eras_max=P["n_eras_max"], d_chart=P["d_chart"], alpha=bars.ALPHA, gamma=bars.GAMMA, window=P["w"],
-              random_state=seed, y_edges=edges, damping=pins["damping"])
+              random_state=seed, y_edges=edges, damping=pins["damping"],
+              holdout="interleaved" if cal is None else "trajectory")
     if pins["law"] == "ns2d":
         kw["law"] = NS2DLaw(n=P["grid"], kmax=P["kmax"], dt=P["dt"] * P["steps_per_snapshot"])
     elif pins["law"] is not None:
@@ -229,9 +235,14 @@ def fit_fcpa(XL, P, seed, pins=None):
     if lags:
         kw["n_lags"] = P["n_lags"]
     est = FCPARegressor(**kw)
-    for tr in XL:
-        est.partial_fit(tr)
-        end_trajectory(est)
+    # end_trajectory's _finalize runs outside the estimator's single-BLAS guard; a BLAS thread pool there made the
+    # fit ~12x slower on a busy machine (6 seed-3 trajectories: 41.8 s against 3.5 s), almost all of it in _shrink
+    with threadpool_limits(limits=1, user_api="blas"):
+        for tr in XL:
+            est.partial_fit(tr)
+            end_trajectory(est)
+        if cal is not None:
+            est.calibrate(cal)
     return est
 
 
@@ -329,7 +340,7 @@ def tune(P, workers, out, device="cpu", log=print):
     tr, ca, te = three_way_split(len(X), bars.TUNE_SEED)
     nl, D = P["n_lags"], X.shape[-1]
     XL = lag_stack(X, nl)
-    est = fit_fcpa(XL[tr], P, bars.TUNE_SEED)
+    est = fit_fcpa(XL[tr], P, bars.TUNE_SEED, cal=XL[ca])
     st = fcpa_stream(est, XL[ca], reg[ca], XL[te], reg[te], P)
     fcpa_inf, K = fcpa_inference_macs(est, st["sizes"]), est.n_eras_
     by_m = baselines.asmodeous_macs_by_m(nl * D, K, P["hidden"], D_out=D)
@@ -354,11 +365,11 @@ def evaluate(seed, P, tuned=None, out=None, workers=1, device="cpu", log=print):
     nl = P["n_lags"]
     XL, DL = lag_stack(X, nl), nl * D
     log(f"seed {seed}: bed {X.shape} ({time.time() - t0:.0f}s); train/cal/test = {len(tr)}/{len(ca)}/{len(te)}")
-    est = fit_fcpa(XL[tr], P, seed)
+    est = fit_fcpa(XL[tr], P, seed, cal=XL[ca])
     st = fcpa_stream(est, XL[ca], reg[ca], XL[te], reg[te], P)
     K, nonfinite = est.n_eras_, {k: [0] for k in ("fcpa", "global", "asmodeous")}
     n_pairs = len(tr) * (L - 1)
-    B = fcpa_train_macs(est, n_pairs, len(tr), P["w"])
+    B = fcpa_train_macs(est, n_pairs + len(ca) * (L - 1), len(tr), P["w"])  # 11c: the Cal pass counts as training
     fp = fcpa_params(est)
     fcpa_inf = fcpa_inference_macs(est, st["sizes"])
     log(f"  FCPA: {K} eras, {fp['total']} params, train {B:.3g} MACs, inference {fcpa_inf:.3g} MACs/step, T={st['T']}")

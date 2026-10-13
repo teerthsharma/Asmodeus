@@ -157,11 +157,15 @@ def preflight(repo, prereg=None):
     """None if clean, else the reason: modified tracked file under zero/, or PREREG untracked/modified."""
     repo = Path(repo)
     prereg = prereg or "zero/PREREG.md"
-    st = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--", "zero/"], capture_output=True, text=True)
+    # drop GIT_* (a commit hook exports GIT_DIR/GIT_INDEX_FILE): they override -C and point git at another repo
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    st = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--", "zero/"], capture_output=True, text=True,
+                        env=env)
     if st.returncode:
         return f"dirty tree: git status failed: {st.stderr.strip()}"
     bad = [l.strip() for l in st.stdout.splitlines() if not l.startswith("??")]
-    if subprocess.run(["git", "-C", str(repo), "ls-files", "--error-unmatch", prereg], capture_output=True).returncode:
+    if subprocess.run(["git", "-C", str(repo), "ls-files", "--error-unmatch", prereg], capture_output=True,
+                      env=env).returncode:
         bad.append(f"{prereg} is not tracked")
     return "dirty tree: " + "; ".join(bad) if bad else None
 

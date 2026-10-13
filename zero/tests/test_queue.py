@@ -246,3 +246,11 @@ def test_after_dependency(tmp_path, repo):
     bad, c = job(tmp_path, "bad", FAIL, ()), job(tmp_path, "c", after=["bad"])
     rc, st = go(tmp_path, repo, [bad, c], name="s2", retries=0)
     assert not Path(c["out"]).exists() and any(l.endswith("FAIL c -1 dependency failed: bad") for l in events(st))
+
+
+def test_preflight_ignores_inherited_git_dir(tmp_path, repo, monkeypatch):
+    # a commit hook exports GIT_DIR/GIT_INDEX_FILE; preflight must still read the repo it was given
+    other = mkrepo(tmp_path / "other", commit_prereg=False)  # its index lacks PREREG.md
+    monkeypatch.setenv("GIT_DIR", str(other / ".git"))
+    monkeypatch.setenv("GIT_INDEX_FILE", str(other / ".git" / "index"))
+    assert runner.preflight(repo) is None

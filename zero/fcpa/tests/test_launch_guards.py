@@ -24,7 +24,7 @@ def world():
     X, reg = rp.gen_bed(SEED, P)
     tr, ca, te = rp.three_way_split(len(X), SEED)
     XL = rp.lag_stack(X, P["n_lags"])
-    est = rp.fit_fcpa(XL[tr], P, SEED)
+    est = rp.fit_fcpa(XL[tr], P, SEED, cal=XL[ca])  # as evaluate() fits it (Amendment 11c)
     return dict(X=X, reg=reg, tr=tr, ca=ca, te=te, XL=XL, est=est, D=X.shape[-1])
 
 
@@ -139,7 +139,7 @@ def test_c_tuning_touches_only_seed_3_and_bed_2003(monkeypatch, tmp_path):
     a0 = baselines.AsmodeousArm.__init__
     monkeypatch.setattr(rp, "gen_bed", lambda seed, *a, **k: (seen.append(("bed", seed)), g0(seed, *a, **k))[1])
     monkeypatch.setattr(rp, "three_way_split", lambda n, seed: (seen.append(("split", seed)), s0(n, seed))[1])
-    monkeypatch.setattr(rp, "fit_fcpa", lambda XL, P_, seed: (seen.append(("fcpa", seed)), f0(XL, P_, seed))[1])
+    monkeypatch.setattr(rp, "fit_fcpa", lambda XL, P_, seed, **k: (seen.append(("fcpa", seed)), f0(XL, P_, seed, **k))[1])
 
     def init(self, *a, seed=0, **k):
         seen.append(("asm", seed))
@@ -230,46 +230,45 @@ def test_e_every_arm_trains_and_rolls_out_on_the_same_lag_stacked_rows(monkeypat
         np.testing.assert_array_equal(s, start)
 
 
-# ---------------------------------------------------------------- (f) L6'/L36: calibration must be held out by whole trajectory
-def _fit_synthetic(monkeypatch, n_traj=30, L=260, D=4):
-    """Fit like run_primary.fit_fcpa on AR(1) trajectories and log, per consumed window, (trajectory id, is_cal)."""
-    from fcpa.estimator import _CAL_EVERY
-    log, cur = [], [-1]
-    p0, c0 = FCPARegressor.partial_fit, FCPARegressor._consume
-
-    def pf(self, X, y=None, t=None):
-        cur[0] += 1
-        return p0(self, X, y, t)
-
-    def cons(self, st, X, Y, flush):
-        if not flush:
-            log.append((cur[0], st.window_idx % _CAL_EVERY == _CAL_EVERY - 1))
-        return c0(self, st, X, Y, flush)
-
-    monkeypatch.setattr(FCPARegressor, "partial_fit", pf)
-    monkeypatch.setattr(FCPARegressor, "_consume", cons)
-    g = np.random.default_rng(0)
-    X = np.zeros((n_traj, L, D))
-    for t in range(1, L):
-        X[:, t] = 0.95 * X[:, t - 1] + 0.3 * g.standard_normal((n_traj, D))
-    est = FCPARegressor(n_eras_max=4, d_chart=2, window=20, random_state=0, y_edges=FCPARegressor.make_step_edges(X))
-    for tr in X:
-        est.partial_fit(tr)
-        est._st.last_x = None
-    return est, log
+# ---------------------------------------------------------------- (f) L6'/L36, Amendment 11c: calibration by whole trajectory
+def test_f_calibration_windows_are_not_interleaved_with_training_windows_of_their_trajectory(world, monkeypatch):
+    """R1: partial_fit sees only Train trajectories, every one of their windows trains, and every pool row comes
+    from a Cal trajectory passed to calibrate()."""
+    XL, tr, ca = world["XL"], world["tr"], world["ca"]
+    seen, p0 = [], FCPARegressor.partial_fit
+    monkeypatch.setattr(FCPARegressor, "partial_fit", lambda self, X, y=None, t=None: (seen.append(np.asarray(X)), p0(self, X, y, t))[1])
+    est = rp.fit_fcpa(XL[tr], P, SEED, cal=XL[ca])
+    assert len(seen) == len(tr) and not any(np.array_equal(x, c) for x in seen for c in XL[ca])
+    st = est._st
+    assert est.holdout == "trajectory" and len(st.cal_lab) and (st.cal_traj >= 0).all() and st.cal_traj.max() < len(ca)
+    held = FCPARegressor(**{**est.get_params(), "holdout": "interleaved"})
+    assert held._held_out(4, False) and not est._held_out(4, False)  # no Train window is held out under R1
 
 
-def test_f_calibration_windows_are_not_interleaved_with_training_windows_of_their_trajectory(monkeypatch):
-    _, log = _fit_synthetic(monkeypatch)
-    cal_trajs = {t for t, c in log if c}
-    train_trajs = {t for t, c in log if not c}
-    assert cal_trajs and train_trajs
-    assert not cal_trajs & train_trajs, f"{len(cal_trajs & train_trajs)} trajectories supply both calibration and training windows"
+def test_f_calibration_pool_spans_the_training_trajectories_not_just_the_last_few(world):
+    """R1: the pool is uncapped (no 400-row FIFO), spans the Cal trajectories, and calibrating changes no era
+    statistic, TT sum or era count."""
+    XL, tr, ca = world["XL"], world["tr"], world["ca"]
+    est = rp.fit_fcpa(XL[tr], P, SEED)
+    est.set_params(holdout="trajectory")
+    st = est._st
+    st.cal_phi, st.cal_lab, st.cal_traj = st.cal_phi[:0], st.cal_lab[:0], st.cal_traj[:0]
+    st.cal_X, st.cal_Y = st.cal_X[:0], st.cal_Y[:0]
+    before = ([sg.n for sg in st.segs], st.tt.counts.copy(), len(st.segs), st.n_pairs)
+    cal = np.concatenate([XL[ca]] * 4)  # 4 x 2 Cal trajectories: more than 400 rows if the windows are admitted
+    est.calibrate(cal)
+    assert ([sg.n for sg in st.segs], len(st.segs), st.n_pairs) == (before[0], before[2], before[3])
+    np.testing.assert_array_equal(st.tt.counts, before[1])
+    assert len(st.cal_lab) > 400 and len(st.cal_lab) % P["w"] == 0
+    assert len(np.unique(st.cal_traj)) >= len(cal) // 2, f"the pool comes from {len(np.unique(st.cal_traj))} of {len(cal)} trajectories"
 
 
-def test_f_calibration_pool_spans_the_training_trajectories_not_just_the_last_few(monkeypatch):
-    est, log = _fit_synthetic(monkeypatch)
-    assert est._st.cal_phi.shape[0] == 400  # _CAL_MAX rows kept: a FIFO of the newest held-out windows
-    kept = [t for t, c in log if c][-400 // 20:]  # the 20 newest calibration windows are what survives
-    n_traj = max(t for t, _ in log) + 1
-    assert len(set(kept)) >= n_traj // 2, f"the calibration pool comes from {len(set(kept))} of {n_traj} trajectories"
+def test_f_an_era_with_too_few_cal_trajectories_is_a_newborn(world):
+    """11c item 4: an era calibrated by fewer than ceil(1/alpha) - 1 Cal trajectories is in every set."""
+    est = world["est"]
+    m = est._model
+    assert m["cal"] is not None
+    n_min, st = m["cal"].n_min_, est._st
+    for i, k in enumerate(m["act"]):
+        n_traj = len(np.unique(st.cal_traj[st.cal_lab == k]))
+        assert np.isinf(m["cal"].quantiles_[i]) if n_traj < n_min else m["cal"].n_cal_[i] > 0

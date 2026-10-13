@@ -31,7 +31,7 @@ from .observer import born, parseval_frame
 from .router import ALONE, OOD, certified_topm, decide
 
 _S = 2  # coarse observer symbols (the window test needs a small alphabet: windows are short)
-_CAL_EVERY = 5  # window j is a calibration window iff j % 5 == 4
+_CAL_EVERY = 5  # holdout="interleaved": window j is a calibration window iff j % 5 == 4
 _CAL_MAX = 400
 _DELTA = 1e-3  # failure level of the window comparison (L11)
 _CROSS = 0.3  # scale of the crossing generators
@@ -153,6 +153,7 @@ class _State:
         self.hist, self.last_sym, self.window_idx = [], None, 0
         self.cal_phi, self.cal_lab = np.zeros((0, 2 * N)), np.zeros(0, int)
         self.cal_X, self.cal_Y = np.zeros((0, d)), np.zeros((0, p))
+        self.cal_traj, self.n_cal_traj = np.zeros(0, int), 0  # Cal trajectory of each pool row (-1: interleaved)
         self.aci = conformal.ACI(alpha, gamma, alpha)
         self.n_pairs = 0
         self.nov = []  # law mode: windows no era explains yet
@@ -169,7 +170,8 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
     """
 
     def __init__(self, n_eras_max=64, d_chart=8, alpha=0.1, gamma=0.005, temp=1.0, eps=0.1, window=32,
-                 random_state=None, n_bins=8, y_edges=None, ood="nearest_era", n_lags=1, law=None, damping=1.0, energy=False):
+                 random_state=None, n_bins=8, y_edges=None, ood="nearest_era", n_lags=1, law=None, damping=1.0, energy=False,
+                 holdout="interleaved"):
         self.n_eras_max = n_eras_max
         self.d_chart = d_chart
         self.alpha = alpha
@@ -185,6 +187,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         self.law = law
         self.damping = damping
         self.energy = energy
+        self.holdout = holdout  # "interleaved" (every 5th window) or "trajectory" (L36 R1: only calibrate() feeds the pool)
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
@@ -241,6 +244,8 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
     def fit(self, X, y=None, t=None):
         if self.window < 2:
             raise ValueError("window must be >= 2")
+        if self.holdout not in ("interleaved", "trajectory"):
+            raise ValueError("holdout must be 'interleaved' or 'trajectory'")
         for a in ("_st", "_model"):
             self.__dict__.pop(a, None)
         return self.partial_fit(X, y, t)
@@ -328,6 +333,9 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
                 return True
         return False
 
+    def _held_out(self, j, flush):
+        return self.holdout == "interleaved" and not flush and j % _CAL_EVERY == _CAL_EVERY - 1
+
     def _consume(self, st, X, Y, flush):
         if self.law is not None:
             return self._consume_law(st, X, Y, flush)
@@ -340,7 +348,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         snap = seg.gauss()
         seq = sym if st.last_sym is None else np.r_[st.last_sym, sym]
         np.add.at(seg.counts, (seq[:-1], seq[1:]), 1)  # includes the cross-window / cross-chunk pair
-        is_cal = (not flush) and j % _CAL_EVERY == _CAL_EVERY - 1
+        is_cal = self._held_out(j, flush)
         if is_cal:
             self._cal_window(st, phi, len(st.segs) - 1)
             st.cal_X = np.vstack([st.cal_X, X])[-_CAL_MAX:]
@@ -396,7 +404,7 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
         psi, phi, sym = self._encode(X)
         R, L = self.law(X)
         j = st.window_idx
-        cal = (not flush) and j % _CAL_EVERY == _CAL_EVERY - 1
+        cal = self._held_out(j, flush)
         win = (X, Y, psi, phi, sym, R, L, cal)
         k = self._best_law(st.segs, R, L)
         if k >= 0:  # a known law explains the window
@@ -478,6 +486,48 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
                 st.aci.update(err if f is None else f)
         st.cal_phi = np.vstack([st.cal_phi, phi])[-_CAL_MAX:]
         st.cal_lab = np.r_[st.cal_lab, np.full(len(phi), label)][-_CAL_MAX:]
+        st.cal_traj = np.r_[st.cal_traj, np.full(len(phi), -1)][-_CAL_MAX:]
+
+    @_single_blas
+    def calibrate(self, X):
+        """L36 R1 (Amendment 11c): held-out trajectories, (n, L, d) or one (L, d), never seen by partial_fit,
+        calibrate the conformal sets, the ACI state and the skill gate. Each full window a live era explains joins
+        the pool (uncapped) with that era's label; a window no era explains and each part-filled tail are dropped.
+        No era statistic, TT sum, change test or birth reads these windows."""
+        check_is_fitted(self, "_model")
+        if self.holdout != "trajectory":
+            raise ValueError("calibrate needs holdout='trajectory' (the interleaved rule already holds windows out)")
+        st = self._st
+        if self.law is None or st.y_vec:
+            raise ValueError("calibrate needs law mode and y=None")
+        Xs = np.asarray(X, float)
+        Xs = Xs[None] if Xs.ndim == 2 else Xs
+        w, Db = self.window, self.n_features_in_ // self.n_lags
+        # eras are fixed while calibrating: each pool row is scored once
+        pool = self._nc_scores(st.segs, st.cal_phi) if len(st.cal_lab) else np.zeros((0, len(st.segs)))
+        for traj in Xs:
+            traj = np.asarray(validate_data(self, traj, reset=False, dtype=[np.float64, np.float32]), float)
+            Xp, Yp = traj[:-1], np.diff(traj[:, :Db], axis=0)
+            tid, st.n_cal_traj = st.n_cal_traj, st.n_cal_traj + 1
+            for a in range(0, len(Xp) - w + 1, w):
+                Xw, Yw = Xp[a:a + w], Yp[a:a + w]
+                k = self._best_law(st.segs, *self.law(Xw))
+                if k < 0:
+                    continue
+                phi = self._encode(Xw)[1]
+                nc = self._nc_scores(st.segs, phi)
+                if len(st.cal_lab) and any(sg.n for sg in st.segs):  # the online ACI step of _cal_window
+                    cp = conformal.SplitConformal(self.alpha).fit(pool, st.cal_lab)
+                    for row in nc:
+                        err = int(k not in cp.predict_set(row, alpha=st.aci.alpha_t))
+                        f = st.aci.forced_err()
+                        st.aci.update(err if f is None else f)
+                pool = np.vstack([pool, nc])
+                st.cal_phi, st.cal_lab = np.vstack([st.cal_phi, phi]), np.r_[st.cal_lab, np.full(w, k)]
+                st.cal_traj = np.r_[st.cal_traj, np.full(w, tid)]
+                st.cal_X, st.cal_Y = np.vstack([st.cal_X, Xw]), np.vstack([st.cal_Y, Yw])
+        self._finalize()
+        return self
 
     # ------------------------------------------------------------------ derived models
     @staticmethod
@@ -548,11 +598,16 @@ class FCPARegressor(RegressorMixin, BaseEstimator):
             # OOD is declared only beyond this much stricter level: an empty alpha-set alone is ~alpha of the
             # in-distribution rows by construction and must not discard the era (e7).
             cal_ood = conformal.SplitConformal(self.alpha * _OOD_FRAC).fit(sc, lab)
+            if self.holdout == "trajectory":  # 11c item 4: n_min counts Cal trajectories, not rows
+                for i, k in enumerate(act):
+                    if len(np.unique(st.cal_traj[st.cal_lab == k])) < cal.n_min_:
+                        for cp in (cal, cal_ood):  # a newborn: no calibration points, in every set
+                            cp.sorted_[i], cp.n_cal_[i], cp.quantiles_[i] = np.zeros(0), 0, np.inf
         tt = st.tt
         gam, gam_tt = self._shrink(st, act, eras, tt)
         g = np.array([st.segs[k].gs / st.segs[k].gn if st.segs[k].gn else 1.0 for k in act])
         g_all = sum(sg.gs for sg in st.segs) / max(sum(sg.gn for sg in st.segs), 1) or 1.0
-        self._model = dict(gam=gam, gam_tt=gam_tt, g=g, g_all=g_all, eras=eras, segs=[st.segs[k] for k in act], n=np.array([st.segs[k].n for k in act], float), cal=cal, cal_ood=cal_ood,
+        self._model = dict(gam=gam, gam_tt=gam_tt, g=g, g_all=g_all, eras=eras, segs=[st.segs[k] for k in act], act=act, n=np.array([st.segs[k].n for k in act], float), cal=cal, cal_ood=cal_ood,
                            tt=tt, centers=tt.centers(), alpha_t=st.aci.alpha_t)
         self.n_eras_ = len(act)
         self.shrink_ = gam
