@@ -34,11 +34,12 @@ class Decider:
         return self.p if self.name in ("GBAYES", "MOM+GB") else 1.0
 
 
-def _share(alive, Smat, d):
-    """Share matrix over n = K + N_TAIL slots for one epoch. alive [K] bool, Smat [K, K] switch counts."""
+def _share(alive, Smat, d, n_tail=N_TAIL):
+    """Share matrix over n = K + n_tail slots (eras first, then the tail experts, which never move).
+    alive [K] bool, Smat [K, K] switch counts. SOFT: (1-a) I + a/m 11^T; MOM: half the shared mass uniform, half along
+    Q = row-normalised (S + 1) off the diagonal (deciders.Momentum)."""
     K = alive.numel()
-    n = K + N_TAIL
-    al = torch.cat([alive, alive.new_ones(N_TAIL)]).to(Smat.dtype)
+    al = torch.cat([alive, alive.new_ones(n_tail)]).to(Smat.dtype)
     m = al.sum()
     a = d.alpha
     eye = torch.diag(al)
@@ -230,3 +231,42 @@ def scan(out, d, chunk=128):
     loss = loss.view(S, -1)[:, :Tm1]
     single = single.view(S, -1)[:, :Tm1]
     return loss, single.to(f).mean(1)
+
+
+NEG = -1e30
+
+
+def _logmm(a, b):
+    """Log-semiring matmul: log(exp(a) @ exp(b)) over the last two dims, exact for -inf-free inputs."""
+    return torch.logsumexp(a[..., :, :, None] + b[..., None, :, :], -2)
+
+
+def window_filter(logl, logM, logw0, eta=1.0):
+    """Forward filter over one window with a constant share matrix, as a log-space parallel prefix scan.
+
+    logl [B, T, n] log-likelihood of the realised token per expert (no grad needed), logM [n, n] or [B, n, n] log share
+    matrix (dead slots: NEG), logw0 [B, n] normalised log weights entering the window.
+    -> (logv [B, T, n] normalised predictive log weights for each token, logw_end [B, n]).
+    Step t: v_t = w_t M; w_{t+1} ∝ v_t * l_t^eta. With A_t = M diag(l_t^eta), w_t ∝ w_0 A_0 ... A_{t-1}; the prefix
+    products are a Hillis-Steele scan (log2 T rounds), so a window costs O(log T) launches, not T."""
+    B, T, n = logl.shape
+    if logM.dim() == 2:
+        logM = logM.expand(B, n, n)
+    A = logM[:, None] + eta * logl[:, :, None, :]                  # [B, T, n, n] log(M diag(l^eta))
+    P = A.clone()
+    off = 1
+    while off < T:                                                  # inclusive scan: P_t = A_0 ... A_t
+        P = torch.cat([P[:, :off], _logmm(P[:, :-off], P[:, off:])], 1)
+        off *= 2
+    lw = torch.logsumexp(logw0[:, None, :, None] + P, -2)          # w_{t+1} unnormalised, t = 0..T-1
+    lw = lw - torch.logsumexp(lw, -1, keepdim=True)
+    lw_all = torch.cat([logw0[:, None], lw[:, :-1]], 1)            # w_t entering token t
+    logv = torch.logsumexp(lw_all[..., :, None] + logM[:, None], -2)
+    logv = logv - torch.logsumexp(logv, -1, keepdim=True)
+    return logv, lw[:, -1]
+
+
+def log_share(alive, Smat, d, n_tail):
+    """log of _share with NEG on dead entries."""
+    M = _share(alive, Smat, d, n_tail)
+    return torch.where(M > 0, torch.log(M.clamp_min(1e-300)), torch.full_like(M, NEG))
