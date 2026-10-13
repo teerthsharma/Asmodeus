@@ -94,3 +94,6 @@ Desktop.ini
 *.swp
 *.swo
 *~
+zero/research/e1/out*/*.npy
+zero/research/e1/out*/*.pt
+zero/research/e1/out_smoke/
