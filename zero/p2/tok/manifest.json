@@ -1,0 +1,17 @@
+{
+ "corpus_sha256": "c5cf5e22ff13614e830afbe61a99fbcbe8bcb7dd72252b989fa1117a368d401f",
+ "split": {
+  "salt": "lang-v1",
+  "fractions": [
+   0.9,
+   0.05,
+   0.05
+  ]
+ },
+ "tokenizers": {
+  "4096": {
+   "file": "tok_4096.json",
+   "sha256": "80eafd2752301aac0d0398a4c8028d6c93231d6ae1eb6d543b1f220c3ff957a4"
+  }
+ }
+}
