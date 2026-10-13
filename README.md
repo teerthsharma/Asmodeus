@@ -48,7 +48,7 @@ Data is not one distribution. It is a **chronal fluid**: a stream whose governin
 
 New eras are born online under an anytime-valid change detector whose false-alarm rate is bounded by Ville's inequality. Two eras that turn out to hold the same law are merged by a Bayes factor that is provably the same rule as the address step. Old eras are never overwritten, so nothing settled is forgotten.
 
-On switching-law streams with recurring regimes, the era bank with the momentum decider (**MOM**) has **11× lower regret** than the best owned online learner ([`VERDICT_E0.md`](zero/research/VERDICT_E0.md)), beats uniform fixed share on **10 of 10** fresh seeds ([`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md)), and has **15× lower regret** than a 0.86M-parameter meta-trained transformer that reads the regime from its context ([`VERDICT_E1.md`](zero/research/VERDICT_E1.md)). The regret bound, the merge rule, no forgetting and the momentum filter are **proved in Lean 4** with no `sorry` ([`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md), [PR #26](https://github.com/teerthsharma/Asmodeus/pull/26)).
+On switching-law streams with recurring regimes, the era bank with the momentum decider (**MOM**) has **11× lower regret** than the best owned online learner ([`VERDICT_E0.md`](zero/research/VERDICT_E0.md)), beats uniform fixed share on **10 of 10** fresh seeds ([`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md)), and has **15× lower regret** than a 0.86M-parameter meta-trained transformer that reads the regime from its context ([`VERDICT_E1.md`](zero/research/VERDICT_E1.md)). The regret bound, the merge rule, no forgetting and the momentum filter are **proved in Lean 4** with no `sorry` ([`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md), [PR #26](https://github.com/teerthsharma/Asmodeus/pull/26), [PR #30](https://github.com/teerthsharma/Asmodeus/pull/30)), together with a finite-sample merge threshold and the learned kernel's regret.
 
 Phase 0 (research) is closed. Phase 1 (Lean, a GPU engine, a real-text pilot) is in progress ([`ROADMAP.md`](zero/research/ROADMAP.md)).
 
@@ -60,13 +60,13 @@ Phase 0 (research) is closed. Phase 1 (Lean, a GPU engine, a real-text pilot) is
 |---|---|---|
 | **Architecture of record** | E0c era bank + **MOM** decider, α = 0.003 | [`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md), [PR #23](https://github.com/teerthsharma/Asmodeus/pull/23) |
 | **Phase 0 (stages 0–4)** | ✓ done | [`ROADMAP.md`](zero/research/ROADMAP.md) |
-| **Stage 5, Lean** | ◐ L38–L41 proved; two items open | [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md), [PR #26](https://github.com/teerthsharma/Asmodeus/pull/26) |
+| **Stage 5, Lean** | ◐ L38–L42 proved, incl. merge threshold and learned kernel | [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md), [PR #26](https://github.com/teerthsharma/Asmodeus/pull/26), [PR #30](https://github.com/teerthsharma/Asmodeus/pull/30) |
 | **Stage 6, GPU engine** | ○ in build; interface frozen | [`phase2/INTERFACE.md`](zero/research/phase2/INTERFACE.md) |
 | **Stage 7, TinyStories pilot** | ○ next | [`ROADMAP.md`](zero/research/ROADMAP.md) §Stage 7 |
 | **Regret vs best owned learner** | 0.028 vs 0.305 nats/token (11×) | [`VERDICT_E0.md`](zero/research/VERDICT_E0.md) |
 | **MOM vs SOFT** | 10/10 paired fresh seeds, −5.6% | [`VERDICT_TOURNAMENT.md`](zero/research/VERDICT_TOURNAMENT.md) |
 | **ERA vs context readers** | 0.027 vs 0.463 (15×), 10/10 seeds | [`VERDICT_E1.md`](zero/research/VERDICT_E1.md) |
-| **Lean** | 40 files, 0 `sorry` | [`zero/lean/FCPA/`](zero/lean/FCPA/), [`check_no_sorry.py`](zero/lean/check_no_sorry.py) |
+| **Lean** | 43 files, 0 `sorry` | [`zero/lean/FCPA/`](zero/lean/FCPA/), [`check_no_sorry.py`](zero/lean/check_no_sorry.py) |
 | **FCPA estimator** | launch unblocked; Amendment 11c frozen; L37 era model next | [`FREEZE4.md`](zero/docs/specs/FREEZE4.md), [PR #25](https://github.com/teerthsharma/Asmodeus/pull/25) |
 
 ```
@@ -297,7 +297,7 @@ The real competitor is in-context inference. Source: [`VERDICT_E1.md`](zero/rese
 
 "Proven" here means a lemma that compiles in Lean 4 with no `sorry`, `axiom`, `admit` or `native_decide` ([`lean/CHANGES.md`](zero/lean/CHANGES.md)). Toolchain `leanprover/lean4:v4.7.0` with a pinned Mathlib ([`lean-toolchain`](zero/lean/lean-toolchain), [`lakefile.lean`](zero/lean/lakefile.lean)).
 
-### The era lemmas, L38–L41 ([PR #26](https://github.com/teerthsharma/Asmodeus/pull/26))
+### The era lemmas, L38–L42 ([PR #26](https://github.com/teerthsharma/Asmodeus/pull/26), [PR #30](https://github.com/teerthsharma/Asmodeus/pull/30))
 
 Full statements and proofs: [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md). The objects are the code in [`zero/research/e0/`](zero/research/e0/), not an idealisation of it.
 
@@ -308,6 +308,9 @@ Full statements and proofs: [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md). The obje
 | **L39c** | $\log \mathrm{BF} = -\mathrm{Div} + \mathrm{Gain} \pm K$: divergence linear in evidence, Occam gain logarithmic | **PROVED** (deterministic); sampling bridge cited | [`L39c_MergeConsistency.lean`](zero/lean/FCPA/L39c_MergeConsistency.lean) |
 | **L40** | No forgetting for count eras | **PROVED** for settled tokens; unconditional form FALSE | [`L40_NoForgetting.lean`](zero/lean/FCPA/L40_NoForgetting.lean) |
 | **L41** | MOM is an HMM forward filter; switch cost $-\log((\alpha/2)\tilde Q(j,i))$, learned $\tilde Q$ included | **PROVED** | [`L41_Momentum.lean`](zero/lean/FCPA/L41_Momentum.lean) |
+| **L39d** | Merge iff $\mathrm{BF}_j \ge (j+1)(j+2)/\delta$: P(any false merge, any pair, any time) ≤ δ; no uniform guarantee exists for a fixed threshold | **PROVED** | [`L39d_MergeThreshold.lean`](zero/lean/FCPA/L39d_MergeThreshold.lean) |
+| **L41b** | Learned $\tilde Q$ is within $(k-1)\log(n+1)$ of the best fixed kernel, on any switch sequence | **PROVED**; parameter rate cited | [`L41b_LearnedKernel.lean`](zero/lean/FCPA/L41b_LearnedKernel.lean) |
+| **L42** | The shipped filter: log-space Bayes is exact; HARD routing costs ≤ $\log(\theta + (1-\theta)/\varepsilon)$ per HARD step | **PROVED** | [`L42_ShippedFilter.lean`](zero/lean/FCPA/L42_ShippedFilter.lean) |
 
 **L38, the bound.** For every token sequence, every expert prediction sequence, every birth/merge schedule and every comparator path $c_t \in s_t$:
 
@@ -319,11 +322,11 @@ with a switch $j \to i$ costing at most $-\log\max\!\big(\rho/N,\ K(j,i)(1-\alph
 
 - **The "free when nothing recurs" gate is now a theorem.** Overhead vs BOCPD is at most $\alpha/(1-\alpha)$ per token for SOFT and about $\alpha/2$ for MOM. Gate G2 is guaranteed for **α ≤ 0.0039 (SOFT) or α ≤ 0.0078 (MOM)**. Round 1 picked α = 0.01, outside the range, and five of six deciders failed G2; round 2's α = 0.003 is inside, and both passed. On NOREC the bound is nearly tight (MOM measured 0.0012–0.0015 per token, bound 0.0016).
 - **The butterfly is bounded.** One token moves $\log w(i)$ by at most $\log(\max P/\min P)$ (L38 `butterfly`). This is the notes' "butterfly effect bonded via topology", made a number.
-- **The merge threshold has no finite-sample guarantee yet.** BF > 1 means δ = 1 (`threshold_one_vacuous`). The candidate is $\log \mathrm{BF} > \log(1/\delta)$. $n_{\min} = 64$ is tuned, not derived.
+- **The merge threshold now has a finite-sample guarantee.** The coded BF > 1 means δ = 1 (`threshold_one_vacuous`). L39d proves that merging only when $\mathrm{BF}_j \ge (j+1)(j+2)/\delta$ bounds the chance of any false merge, over any pair and any time, by δ. $n_{\min} = 64$ is still tuned, not derived.
 - **No forgetting holds for settled tokens only.** A re-address can move a recent token out of an era. The unconditional statement is false, with a counterexample in [`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md).
 - **MOM is exactly an HMM forward filter**, so a batched log-space forward pass, or a parallel scan, computes it with no approximation. This is what the stage 6 engine relies on.
 
-**Still open:** the convergence rate of the learned $\tilde Q$ in L41, and a merge threshold with a finite-sample guarantee ([`ROADMAP.md`](zero/research/ROADMAP.md) stage 5).
+**Still cited, not formalised:** how fast the learned $\tilde Q$ approaches the true switch law (needs Hoeffding for chains), and L39c's sampling bridge ([`ERA_LEMMAS.md`](zero/lean/ERA_LEMMAS.md)).
 
 ### The FCPA lemma chain, L1–L37
 
@@ -375,7 +378,7 @@ The full roadmap, with purpose, activities, deliverables, exit gate and common f
 | # | Stage | Exit gate | Ours |
 |---|---|---|---|
 | 0 ✓ | Frame the idea | each claim falsifiable by a named experiment | [`PROGRAM.md`](zero/research/PROGRAM.md): H-core, claims C1–C6 with kill rules |
-| 1 ✓ | Formal objects and theory sketch | no component without a lemma | FCPA L1–L37 + era lemmas L38–L41 |
+| 1 ✓ | Formal objects and theory sketch | no component without a lemma | FCPA L1–L37 + era lemmas L38–L42 |
 | 2 ✓ | Toy beds and owned baselines | preregistered bars pass on fresh seeds | E0–E0c: 11× lower regret, no forgetting, 0 false eras |
 | 3 ✓ | Ablations and component tournament | winner beats incumbent on ≥ 8/10 paired seeds | E0d/E0e: MOM 10/10 vs SOFT |
 | 4 ✓ | Strong-learner controls at equal size | E1 bars B1, B2 | E1: 10/10 seeds; 15× lower regret than TF-META |
@@ -384,7 +387,7 @@ The full roadmap, with purpose, activities, deliverables, exit gate and common f
 
 | # | Stage | Exit gate | State |
 |---|---|---|---|
-| 5 ◐ | Decide every lemma in Lean | every lemma decided, Lean build clean | L38–L41 proved; learned-Q rate and finite-sample merge threshold open |
+| 5 ◐ | Decide every lemma in Lean | every lemma decided, Lean build clean | L38–L42 proved, incl. the merge threshold (L39d) and learned kernel (L41b); parameter rates cited |
 | 6 ○ | Engineering build: batched torch era bank, parallel-scan MOM filter in log space, mixed precision, checkpointing, era-usage monitoring | exact parity with the numpy reference on E0 seeds, plus a throughput target | in build; API frozen in [`phase2/INTERFACE.md`](zero/research/phase2/INTERFACE.md) |
 | 7 ○ | Real-data pilot: tokenizer, hash-pinned TinyStories, era heads as closed-form ridge readouts | a reproducible run that beats the owned n-gram baseline ([`lm/ngram.py`](zero/lm/ngram.py)) | next |
 
@@ -505,9 +508,9 @@ zero/
 │   ├── e0/                      numpy reference: bed.py, arms.py (era bank), deciders.py (SOFT, MOM, …), runners, results
 │   ├── e1/                      GRU and transformer controls, results in e1/out/
 │   └── phase2/INTERFACE.md      frozen API of the torch era LM (stage 6–7)
-├── lean/                        Lean 4 proofs: FCPA L1–L37 and era lemmas L38–L41 (0 sorry)
+├── lean/                        Lean 4 proofs: FCPA L1–L37 and era lemmas L38–L42 (0 sorry)
 │   ├── FCPA/                    one file per lemma
-│   ├── ERA_LEMMAS.md            L38–L41 statements, proofs, status
+│   ├── ERA_LEMMAS.md            L38–L42 statements, proofs, status
 │   └── CHANGES.md               every statement change against the spec
 ├── fcpa/                        FCPARegressor: the scikit-learn estimator, NS-2D bed, bars, runner, tests
 ├── docs/specs/                  FCPA spec, amendments, freezes, errata, audits, theory notes (L28c, L37, E1)
