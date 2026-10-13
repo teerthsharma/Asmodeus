@@ -113,10 +113,11 @@ def test_baselines_freeze_gate_accepts_the_frozen_files():
     assert (ROOT / "docs" / "specs" / "FREEZE2.md").exists()
     assert "PREREG_AMENDMENT_11a.md" in (ROOT / "docs" / "specs" / "FREEZE2.md").read_text()
     assert "PREREG_AMENDMENT_11b.md" in (ROOT / "docs" / "specs" / "FREEZE3.md").read_text()  # lag stack, step edges
+    assert "PREREG_AMENDMENT_11c.md" in (ROOT / "docs" / "specs" / "FREEZE4.md").read_text()  # calibration by Cal trajectory
 
 
 @pytest.mark.parametrize("victim", ["PREREG_AMENDMENT_11_DRAFT.md", "2026-10-11-fcpa-design.md", "PREREG_AMENDMENT_11a.md",
-                                    "PREREG_AMENDMENT_11b.md"])
+                                    "PREREG_AMENDMENT_11b.md", "PREREG_AMENDMENT_11c.md"])
 def test_baselines_freeze_gate_refuses_a_changed_spec(tmp_path, victim):
     from fcpa import run_primary
 
@@ -526,7 +527,7 @@ def test_baselines_smoke_run_end_to_end(tmp_path):
     out = json.loads((tmp_path / "results.json").read_text())
     assert (tmp_path / "report.md").exists()
     assert out["smoke"] is True and out["freeze_verified"] is True
-    assert out["freeze_files"] == ["FREEZE.md", "FREEZE2.md", "FREEZE3.md"] and out["c2_mode"] == "prime" and out["diagnostic"] is False
+    assert out["freeze_files"] == ["FREEZE.md", "FREEZE2.md", "FREEZE3.md", "FREEZE4.md"] and out["c2_mode"] == "prime" and out["diagnostic"] is False
     assert out["bars"]["C2"]["status"] == "REPORTED"
     assert out["verdict"] in {"PASS", "FAIL", "VOID", "NOT RUN"}
     assert out["bars"]["P4"]["status"] == "VOID"  # smoke stream is far below T = 950 steps
