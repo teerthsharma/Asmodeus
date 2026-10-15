@@ -1,0 +1,3 @@
+## 2026-03-06 - Upper-Triangular Chunk Slicing in Pairwise Geodesic Metrics
+**Learning:** Chunked distance evaluations for symmetric pairwise comparisons (`i < j`) in `metrics._pairs` evaluated `geo(s[a:a+chunk], s[None])` over all `N` points rather than `s[a:n]`. Since geodesic distances on manifolds (e.g. `geo_s2`, `geo_klein`, `geo_so3`) involve non-trivial trigonometric and matrix operations, computing distances for `j < a` was 100% redundant. Slicing the target array to `s[a:n]` cuts total distance calculations and intermediate allocations by 50%.
+**Action:** When computing chunked upper-triangular or symmetric pairwise metrics, slice the target array to the upper triangle domain `[a:n]` instead of evaluating full rectangular chunks `[chunk, N]`.

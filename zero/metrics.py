@@ -224,14 +224,21 @@ def _flat(g, state, n_max, seed):
 
 
 def _pairs(s, geo, keep, chunk=256):
+    """Chunk-wise upper-triangular (i < j) pair extraction for geodesic distance filtering.
+    Optimized to compute distances only against s[a:n] rather than all n points, saving ~50%
+    distance calculations and memory allocation without altering outputs."""
     I, J = [], []
-    for a in range(0, len(s), chunk):
-        d = geo(s[a:a + chunk, None], s[None])
-        i, j = np.nonzero(keep(d))
-        i = i + a
-        m = i < j
-        I.append(i[m]); J.append(j[m])
-    return np.concatenate(I), np.concatenate(J)
+    n = len(s)
+    for a in range(0, n - 1, chunk):
+        a_end = min(a + chunk, n)
+        d = geo(s[a:a_end, None], s[a:n][None])
+        r, c_rel = np.nonzero(keep(d))
+        m = r < c_rel
+        I.append(r[m] + a)
+        J.append(c_rel[m] + a)
+    if I:
+        return np.concatenate(I), np.concatenate(J)
+    return np.zeros(0, dtype=int), np.zeros(0, dtype=int)
 
 
 def _rel_latent(g, I, J):
