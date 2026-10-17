@@ -25,13 +25,47 @@ LAM_BAL = 0.3
 # the 1e-6 eps keeps an all-zero input (closed gate) finite.
 ANCHOR = 0.1
 
+_SIGREG_PARAM_CACHE = {}
+
+
+def _get_sigreg_params(t_max: float, n_points: int, device: torch.device, dtype: torch.dtype):
+    """Cache grid parameters (t, phi, w_phi) per device and dtype to eliminate repeated allocations."""
+    key = (t_max, n_points, device, dtype)
+    params = _SIGREG_PARAM_CACHE.get(key)
+    if params is None:
+        t = torch.linspace(0, t_max, n_points, device=device, dtype=dtype)
+        dt = t_max / (n_points - 1)
+        w = torch.full_like(t, 2 * dt)
+        w[[0, -1]] = dt
+        phi = (-0.5 * t * t).exp()
+        w_phi = w * phi
+        params = (t, phi, w_phi)
+        _SIGREG_PARAM_CACHE[key] = params
+    return params
+
 
 def sigreg(x: torch.Tensor, grp: torch.Tensor | None = None, n_groups: int | None = None,
            num_slices: int = 256, t_max: float = 3.0, n_points: int = 17) -> torch.Tensor:
     """x [..., d] -> scalar. With grp (int labels [N]) the statistic is the mean over groups with >= 2 rows."""
     x = x.reshape(-1, x.shape[-1])
+    N = len(x)
+
+    # Fast path for ungrouped calls (grp is None): avoid dummy group allocations, bincount, and atomic index_add
     if grp is None:
-        grp, n_groups = torch.zeros(len(x), dtype=torch.long, device=x.device), 1
+        if N < 2:
+            return x.sum() * 0  # no signal, no NaN, keeps the graph
+        A = torch.randn(x.shape[-1], num_slices, device=x.device, dtype=x.dtype)
+        A = A / A.norm(dim=0, keepdim=True)
+        t, phi, w_phi = _get_sigreg_params(t_max, n_points, x.device, x.dtype)
+        proj = x @ A  # [N, S]
+        xt = proj.unsqueeze(-1) * t  # [N, S, P]
+        re = xt.cos().mean(dim=0, keepdim=True)  # [1, S, P]
+        im = xt.sin().mean(dim=0, keepdim=True)  # [1, S, P]
+        err = (re - phi).square() + im.square()  # [1, S, P]
+        ep = (err @ w_phi).mean()
+        m2 = proj.square().mean(dim=0, keepdim=True)  # [1, S]
+        return ep + ANCHOR * (m2 + 1e-6).log().square().mean()
+
     grp = grp.reshape(-1)
     n_groups = n_groups or int(grp.max()) + 1
     cnt = torch.bincount(grp, minlength=n_groups)
@@ -40,11 +74,7 @@ def sigreg(x: torch.Tensor, grp: torch.Tensor | None = None, n_groups: int | Non
         return x.sum() * 0  # no signal, no NaN, keeps the graph
     A = torch.randn(x.shape[-1], num_slices, device=x.device, dtype=x.dtype)
     A = A / A.norm(dim=0, keepdim=True)
-    t = torch.linspace(0, t_max, n_points, device=x.device, dtype=x.dtype)
-    dt = t_max / (n_points - 1)
-    w = torch.full_like(t, 2 * dt)
-    w[[0, -1]] = dt
-    phi = (-0.5 * t * t).exp()
+    t, phi, w_phi = _get_sigreg_params(t_max, n_points, x.device, x.dtype)
     proj = x @ A  # [N, S]
     xt = proj.unsqueeze(-1) * t  # [N, S, P]
     z = x.new_zeros(n_groups, *xt.shape[1:])
@@ -53,6 +83,6 @@ def sigreg(x: torch.Tensor, grp: torch.Tensor | None = None, n_groups: int | Non
     re = z.index_add(0, grp, xt.cos())[ok] / c
     im = z.index_add(0, grp, xt.sin())[ok] / c
     err = (re - phi).square() + im.square()  # [G, S, P]
-    ep = (err @ (w * phi)).mean()
+    ep = (err @ w_phi).mean()
     m2 = x.new_zeros(n_groups, proj.shape[1]).index_add(0, grp, proj.square())[ok] / c[:, :, 0]  # raw 2nd moment
     return ep + ANCHOR * (m2 + 1e-6).log().square().mean()
