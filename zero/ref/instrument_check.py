@@ -39,6 +39,15 @@ class diag_q_instrument:
             raise IndexError(v)
         return np.sqrt(self.M[:, v])[:, None] * self.Q
 
+    def max_masses(self):
+        """Analytical largest singular value squared: since Q is unitary, ||K_v||_2^2 = max_i M[i, v]."""
+        return self.M.max(0)
+
+    def probs(self, psis):
+        """Vectorized outcome probabilities for all psis [X, N]: P = |psis @ Q.T|^2 @ M."""
+        Q_psi = psis @ self.Q.T
+        return np.abs(Q_psi) ** 2 @ self.M
+
 
 def is_complete(K, tol=1e-9):
     S = sum(k.conj().T @ k for k in K)
@@ -47,7 +56,9 @@ def is_complete(K, tol=1e-9):
 
 def max_masses(K):
     """max over unit psi of |K_v psi|^2 = largest singular value squared, per outcome."""
-    return np.array([np.linalg.norm(k, 2) ** 2 for k in K])
+    if hasattr(K, "max_masses"):
+        return K.max_masses()
+    return np.array([np.linalg.svdvals(k)[0] ** 2 for k in K])
 
 
 def instrument_max_mass(K):
@@ -60,7 +71,14 @@ def tokens_reachable(K, p):
 
 def mutual_information_nats(K, psis):
     """I(X; V) for X uniform over the rows of psis (pure states) and V the outcome of instrument K."""
-    P = np.array([[np.linalg.norm(k @ p) ** 2 for k in K] for p in psis])     # p(v | x)
+    if hasattr(K, "probs"):
+        P = K.probs(psis)
+    elif isinstance(K, list) and len(K) > 0:
+        K_stack = np.stack(K)
+        Kp = np.einsum('vij,xj->xvi', K_stack, psis)
+        P = np.sum(np.abs(Kp) ** 2, axis=-1)
+    else:
+        P = np.array([[np.linalg.norm(k @ p) ** 2 for k in K] for p in psis])     # p(v | x)
     pv = P.mean(0)
     with np.errstate(divide="ignore", invalid="ignore"):
         t = np.where(P > 0, P * np.log(P / pv), 0.0)
