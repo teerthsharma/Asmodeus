@@ -69,13 +69,13 @@ def betti_at(bars, tau, max_hom_dim=3):
     return tuple(sum(1 for d, b, e in bars if d == k and b >= tau > e) for k in range(max_hom_dim + 1))
 
 
-def certified_betti(bars, eps, max_hom_dim=3, tau_min=1 / 32):
+def certified_betti(bars, eps, max_hom_dim=3, tau_min=1 / 32, require_connected=True):
     """Stable-interval read -> (vector | None, interval_length, (lo, hi)).
 
     Between consecutive bar endpoints (essential deaths = tau_min) betti_at is constant; adjacent intervals with
-    equal vectors merge. Returns the vector of the LONGEST merged interval with b0 == 1 (b0 >= 1 is not enough: six
-    disjoint octahedral charts hold b0 = 6 over ~0.46, longer than the true (1,0,1) window ~0.25), its length and bounds; vector is
-    None if that length <= eps. Support guard (n_min) only covers outlier fractions below n_min / N."""
+    equal vectors merge. Returns the vector of the LONGEST merged interval with b0 == 1 (if require_connected=True,
+    as b0 >= 1 is not enough: six disjoint octahedral charts hold b0 = 6 over ~0.46, longer than the true (1,0,1) window ~0.25),
+    its length and bounds; vector is None if that length <= eps. Support guard (n_min) only covers outlier fractions below n_min / N."""
     bars = [(d, b, tau_min if e == 0.0 else e) for d, b, e in bars]
     pts = sorted({tau_min, *(x for _, b, e in bars for x in (b, e)), max([b for _, b, _ in bars], default=tau_min)})
     pts = [x for x in pts if x >= tau_min]
@@ -86,7 +86,8 @@ def certified_betti(bars, eps, max_hom_dim=3, tau_min=1 / 32):
             segs[-1][2] = hi
         else:
             segs.append([v, lo, hi])
-    segs = [t for t in segs if t[0][0] == 1]  # connected nerve only: see docstring
+    if require_connected:
+        segs = [t for t in segs if t[0][0] == 1]  # connected nerve only: see docstring
     if not segs:
         return None, 0.0, (tau_min, tau_min)
     v, lo, hi = max(segs, key=lambda t: t[2] - t[1])
